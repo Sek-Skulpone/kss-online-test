@@ -1362,88 +1362,149 @@
     reader.readAsArrayBuffer(file);
   }
 
-  // ตัวแกะคำถามข้อสอบจากข้อความดิบของ Docx
+  // ตัวแกะคำถามข้อสอบจากข้อความดิบของ Docx (เวอร์ชันปรับปรุงความถูกต้องสูงสุด สำหรับวิชาคณิตศาสตร์และข้อสอบจัดรูปซับซ้อน)
   function parseDocxExamText(text) {
     loading(false);
     
-    // แยกตามแต่ละบรรทัด
-    const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    // แยกเป็นแต่ละย่อหน้า
+    const paragraphTexts = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     
-    parsedQuestions = [];
-    let currentQuestion = null;
+    const rawQuestions = [];
+    let currentQ = null;
+    let nextQNum = 1;
 
-    // รูปแบบ Regex สำหรับค้นหา โจทย์ และ ตัวเลือก
-    // ค้นหา ข้อ เช่น: 1. , 1) , ข้อ 1. , [1]
-    const questionRegex = /^(?:ข้อ\s*)?(\d+)\s*[\.\)\]\-]\s*(.+)$/i;
-    
-    // ค้นหาตัวเลือก เช่น: ก. , ข) , A. , 1.
-    const choiceRegex = /^(?:[ก-งa-d1-4A-D])\s*[\.\)\]\-]\s*(.+)$/i;
-    
-    // ค้นหาเฉลย เช่น: เฉลย: ก , คำตอบ 2 , เฉลย: 3 , Answer: B
-    const answerRegex = /^(?:เฉลย|คำตอบ|Ans|Answer|Key)\s*[\:\-\s]\s*([ก-งa-d1-4A-D]|[1-4])/i;
+    // ตรวจหาหัวข้อคำถาม เช่น 1. หรือ 2. หรือ 3.
+    const qRegex = /^\s*(\d+)\s*[\.\)\]\-]\s*(.*)$/;
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+    for (let i = 0; i < paragraphTexts.length; i++) {
+      const pText = paragraphTexts[i];
+      const match = pText.match(qRegex);
       
-      // ตรวจสอบว่าเป็นบรรทัดโจทย์
-      const qMatch = line.match(questionRegex);
-      if (qMatch) {
-        // หากมีข้อที่ประมวลอยู่ก่อนหน้า ให้เซฟเก็บไว้ก่อน
-        if (currentQuestion) {
-          parsedQuestions.push(currentQuestion);
+      if (match && parseInt(match[1]) === nextQNum) {
+        const content = match[2].trim();
+        
+        // เช็คการชนกันระหว่างข้อย่อยของคำตอบ และ ข้อหัวข้อหลัก (สำหรับช่วงข้อ 1-4)
+        let isChoicesLine = false;
+        if (nextQNum <= 4) {
+          isChoicesLine = /[\s,](?:2|4|ข|ง|B|D)\s*[\.\)\]\-]/i.test(content);
         }
         
-        currentQuestion = {
-          no: parseInt(qMatch[1]),
-          question: qMatch[2],
-          choices: [],
-          correctAns: 1, // เริ่มต้นด้วย 1 เสมอ
-          points: 1
-        };
-        continue;
-      }
-      
-      // ตรวจสอบตัวเลือก (ต้องมีโจทย์มารองรับก่อน)
-      if (currentQuestion) {
-        const cMatch = line.match(choiceRegex);
-        if (cMatch) {
-          if (currentQuestion.choices.length < 4) {
-            currentQuestion.choices.push(cMatch[1]);
+        if (!isChoicesLine) {
+          if (currentQ) {
+            rawQuestions.push(currentQ);
           }
+          currentQ = {
+            no: nextQNum,
+            question: content,
+            optionParagraphs: []
+          };
+          nextQNum++;
           continue;
         }
-        
-        // ตรวจสอบเฉลยของข้อนั้นๆ
-        const aMatch = line.match(answerRegex);
-        if (aMatch) {
-          const ansChar = aMatch[1].trim().toUpperCase();
-          let ansNum = 1;
-          
-          // แปลงอักษรภาษาไทยเป็นเลขตัวเลือก 1-4
-          if (ansChar === "ก" || ansChar === "A" || ansChar === "1") ansNum = 1;
-          else if (ansChar === "ข" || ansChar === "B" || ansChar === "2") ansNum = 2;
-          else if (ansChar === "ค" || ansChar === "C" || ansChar === "3") ansNum = 3;
-          else if (ansChar === "ง" || ansChar === "D" || ansChar === "4") ansNum = 4;
-          
-          currentQuestion.correctAns = ansNum;
-        }
+      }
+      
+      if (currentQ) {
+        currentQ.optionParagraphs.push(pText);
       }
     }
 
-    // เซฟข้อสุดท้าย
-    if (currentQuestion) {
-      parsedQuestions.push(currentQuestion);
+    if (currentQ) {
+      rawQuestions.push(currentQ);
     }
 
-    if (parsedQuestions.length === 0) {
+    if (rawQuestions.length === 0) {
       alert("❌ ไม่สามารถค้นหาข้อสอบในไฟล์ Word ได้!\nกรุณาตรวจสอบว่ามีหมายเลขข้อ เช่น '1.' และตัวเลือก 'ก. ข. ค. ง.' หรือ 'A. B. C. D.' ในไฟล์อย่างชัดเจนหรือไม่");
       document.getElementById('import-preview-section').classList.add('hidden');
       return;
     }
 
-    // นำรายชื่อโจทย์มาจัดเรียงเลขข้อใหม่เพื่อความชัวร์
-    parsedQuestions.forEach((q, index) => {
-      q.no = index + 1;
+    parsedQuestions = [];
+
+    rawQuestions.forEach(q => {
+      const optionsText = q.optionParagraphs.join(" ");
+      
+      // ดักหาตัวเลือก ก. ข. ค. ง. หรือ 1. 2. 3. 4.
+      const patterns = [
+        /(?:^|\s)([ก-ง1-4A-D])\s*[\.\)\]\-]\s*/g,
+        /(?:^|\s)([a-d])\s*[\.\)\]\-]\s*/gi
+      ];
+      
+      let bestMatches = [];
+      for (let pat of patterns) {
+        pat.lastIndex = 0;
+        let m;
+        let matches = [];
+        while ((m = pat.exec(optionsText)) !== null) {
+          matches.push({
+            index: m.index,
+            length: m[0].length,
+            val: m[1]
+          });
+        }
+        
+        if (matches.length === 4) {
+          bestMatches = matches;
+          break;
+        }
+        
+        if (matches.length > 0 && matches.length <= 4) {
+          if (matches.length > bestMatches.length) {
+            bestMatches = matches;
+          }
+        }
+      }
+
+      let choices = [];
+      if (bestMatches.length > 0) {
+        // ดึงโจทย์ส่วนที่เกินมาใส่กลับโจทย์หลัก
+        const extraQuestion = optionsText.substring(0, bestMatches[0].index).trim();
+        if (extraQuestion) {
+          q.question += " " + extraQuestion;
+        }
+        
+        for (let j = 0; j < bestMatches.length; j++) {
+          const start = bestMatches[j].index + bestMatches[j].length;
+          const end = (j + 1 < bestMatches.length) ? bestMatches[j+1].index : optionsText.length;
+          choices.push(optionsText.substring(start, end).trim());
+        }
+      } else {
+        choices = [...q.optionParagraphs];
+      }
+
+      while (choices.length < 4) {
+        choices.push("");
+      }
+      if (choices.length > 4) {
+        choices = choices.slice(0, 4);
+      }
+
+      // ค้นหาเฉลยอัตโนมัติ
+      let correctAns = 1;
+      const ansRegex = /(?:เฉลย|คำตอบ|Ans|Answer|Key)\s*[\:\-\s]\s*([ก-งa-d1-4A-D]|[1-4])/i;
+      const ansMatch = (q.question + " " + optionsText).match(ansRegex);
+      if (ansMatch) {
+        const ansChar = ansMatch[1].trim().toUpperCase();
+        if (ansChar === "ก" || ansChar === "A" || ansChar === "1") correctAns = 1;
+        else if (ansChar === "ข" || ansChar === "B" || ansChar === "2") correctAns = 2;
+        else if (ansChar === "ค" || ansChar === "C" || ansChar === "3") correctAns = 3;
+        else if (ansChar === "ง" || ansChar === "D" || ansChar === "4") correctAns = 4;
+        
+        // ล้างคำเฉลยไม่ให้ติดไปในตัวเลือก
+        choices.forEach((ch, idx) => {
+          const pos = ch.indexOf(ansMatch[0]);
+          if (pos !== -1) {
+            choices[idx] = ch.substring(0, pos).trim();
+          }
+        });
+      }
+
+      parsedQuestions.push({
+        no: q.no,
+        question: q.question,
+        choices: choices,
+        correctAns: correctAns,
+        points: 0.5 // ค่าเริ่มต้นเป็นข้อละ 0.5 คะแนนตามที่ระบุในคำสั่งข้อสอบ
+      });
     });
 
     renderImportPreview();

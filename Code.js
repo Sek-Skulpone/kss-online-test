@@ -1,5 +1,11 @@
 const SPREADSHEET_ID = '1KZicFPjH37Key3fcFgEVqXZULLar-IcV0j9tg0tWOEo'; 
 
+// ==============================================
+// CONFIGURATION FOR FIREBASE FIRESTORE (OPTIONAL)
+// ==============================================
+const FIREBASE_PROJECT_ID = ''; // ใส่ Project ID ของ Firebase เช่น 'my-exam-project'
+const FIREBASE_API_KEY = '';    // ใส่ Web API Key ของ Firebase
+
 function doGet() {
   return HtmlService.createTemplateFromFile('Index')
       .evaluate()
@@ -91,12 +97,8 @@ function getExamData(level, studentId) {
     let isNativeExam = false;
     let sheetName = "";
     if (examUrl && !examUrl.toLowerCase().startsWith("http")) {
-      // ตรวจสอบว่ามีชีตนี้อยู่ในระบบจริงหรือไม่
-      const targetSheet = ss.getSheetByName(examUrl);
-      if (targetSheet) {
-        isNativeExam = true;
-        sheetName = examUrl;
-      }
+      isNativeExam = true;
+      sheetName = examUrl;
     }
 
     return {
@@ -169,8 +171,18 @@ function unlockStudent(level, sid, code) {
   return "ไม่พบข้อมูลวิชาที่ล็อก";
 }
 
-// ดึงโจทย์ข้อสอบจาก Google Sheets แบบปลอดภัย (กรองข้อมูลเฉลยออกเพื่อความปลอดภัยของเฉลย)
+// ดึงโจทย์ข้อสอบแบบปลอดภัย (กรองข้อมูลเฉลยออกก่อนส่งไปหน้านักเรียน)
 function getQuestions(sheetName) {
+  // ลองดึงจาก Firebase ก่อนหากระบุค่าเชื่อมต่อไว้
+  if (FIREBASE_PROJECT_ID && FIREBASE_API_KEY) {
+    const fbQuestions = getQuestionsFromFirebase(sheetName);
+    if (fbQuestions && fbQuestions.length > 0) {
+      console.log("Loaded questions from Firebase Firestore successfully.");
+      return fbQuestions;
+    }
+  }
+
+  // ดึงจาก Google Sheets (Fallback)
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName(sheetName);
@@ -202,17 +214,30 @@ function getQuestions(sheetName) {
 
 // บันทึกกิจกรรมด้านความปลอดภัย (Security Logger) ป้องกันการสลับหน้าจอหรือทุจริต
 function logSecurityEvent(studentId, studentName, level, subjectCode, eventType, details) {
+  const timestamp = Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd HH:mm:ss");
+
+  // บันทึกลง Firebase (ถ้าเปิดใช้)
+  if (FIREBASE_PROJECT_ID && FIREBASE_API_KEY) {
+    writeDocumentToFirebase("security_logs", studentId + "_" + eventType + "_" + new Date().getTime(), {
+      timestamp: timestamp,
+      studentId: studentId,
+      studentName: studentName,
+      level: level,
+      subjectCode: subjectCode,
+      eventType: eventType,
+      details: details
+    });
+  }
+
+  // บันทึกลง Google Sheet
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     let logSheet = ss.getSheetByName("Security_Logs");
     if (!logSheet) {
-      // สร้างชีตใหม่หากยังไม่มี
       logSheet = ss.insertSheet("Security_Logs");
       logSheet.appendRow(["วัน-เวลาที่เกิดเหตุ", "รหัสนักเรียน", "ชื่อ-นามสกุล", "ชั้นเรียน", "รหัสวิชา", "ประเภทเหตุการณ์", "รายละเอียดเหตุการณ์"]);
       logSheet.getRange("A1:G1").setFontWeight("bold").setBackground("#ffebee").setFontColor("#b71c1c");
     }
-    
-    const timestamp = Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd HH:mm:ss");
     logSheet.appendRow([timestamp, studentId, studentName, level, subjectCode, eventType, details]);
     return true;
   } catch (e) {
@@ -221,46 +246,80 @@ function logSecurityEvent(studentId, studentName, level, subjectCode, eventType,
   }
 }
 
-// ตรวจคำตอบบนเซิร์ฟเวอร์ คำนวณคะแนน และบันทึกผลการสอบลงชีต Exam_Results
+// ตรวจคำตอบบนเซิร์ฟเวอร์ คำนวณคะแนน และบันทึกผลการสอบลงชีต
 function submitExam(studentId, studentName, level, room, no, subjectCode, sheetName, studentAnswers, status) {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const qSheet = ss.getSheetByName(sheetName);
-    if (!qSheet) return { status: "error", message: "ไม่พบข้อมูลชีตข้อสอบในระบบ" };
+    let qData = [];
+    let isFromFirebase = false;
 
-    const lastRow = qSheet.getLastRow();
-    if (lastRow < 2) return { status: "error", message: "ชีตข้อสอบไม่มีคำถาม" };
+    // ลองตรวจกระดาษคำตอบจากฐานข้อมูล Firebase ก่อน
+    if (FIREBASE_PROJECT_ID && FIREBASE_API_KEY) {
+      const fbExamDoc = readDocumentFromFirebase("exams", sheetName);
+      if (fbExamDoc && fbExamDoc.questions) {
+        qData = fbExamDoc.questions;
+        isFromFirebase = true;
+      }
+    }
 
-    // ดึงคำถาม คีย์เฉลย (คอลัมน์ G / Index 6) และคะแนนต่อข้อ (คอลัมน์ H / Index 7)
-    const qData = qSheet.getRange(2, 1, lastRow - 1, 8).getValues();
+    // หากไม่มี Firebase หรือไม่พบคลังข้อสอบ ดึงจากชีตตามปกติ
+    if (!isFromFirebase) {
+      const qSheet = ss.getSheetByName(sheetName);
+      if (!qSheet) return { status: "error", message: "ไม่พบข้อมูลชีตข้อสอบในระบบ" };
+
+      const lastRow = qSheet.getLastRow();
+      if (lastRow < 2) return { status: "error", message: "ชีตข้อสอบไม่มีคำถาม" };
+
+      // ดึงคอลัมน์ A ถึง H (เฉลยคือ Index 6, คะแนนคือ Index 7)
+      const rawSheetData = qSheet.getRange(2, 1, lastRow - 1, 8).getValues();
+      qData = rawSheetData.map(r => ({
+        correctAns: parseInt(r[6]),
+        points: parseFloat(r[7]) || 1
+      }));
+    }
     
     let totalScore = 0;
     let maxScore = 0;
     
-    // คำนวณคะแนนที่นักเรียนทำได้
     qData.forEach((row, index) => {
-      const correctAns = parseInt(row[6]); // ตัวเลือกที่ถูกต้อง 1, 2, 3, 4
-      const points = parseFloat(row[7]) || 1; // คะแนนของข้อนี้ (เริ่มต้น 1)
+      const correctAns = parseInt(row.correctAns); // 1-4
+      const points = parseFloat(row.points) || 1;
       maxScore += points;
       
-      const studentAns = parseInt(studentAnswers[index]); // คำตอบของนักเรียน
+      const studentAns = parseInt(studentAnswers[index]);
       if (studentAns === correctAns) {
         totalScore += points;
       }
     });
 
-    // บันทึกผลสอบในชีต Exam_Results
+    const timestamp = Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd HH:mm:ss");
+
+    // บันทึกคะแนนลง Firebase
+    if (FIREBASE_PROJECT_ID && FIREBASE_API_KEY) {
+      writeDocumentToFirebase("exam_results", studentId + "_" + subjectCode, {
+        timestamp: timestamp,
+        studentId: studentId,
+        studentName: studentName,
+        level: level,
+        room: room,
+        no: no,
+        subjectCode: subjectCode,
+        score: totalScore,
+        maxScore: maxScore,
+        status: status,
+        details: status === "FORCE_LOCKED" ? "ถูกตัดสิทธิ์สอบเนื่องจากตรวจพบการทุจริตสลับจอ" : "ส่งข้อสอบตามปกติ"
+      });
+    }
+
+    // บันทึกคะแนนลง Google Sheet
     let resSheet = ss.getSheetByName("Exam_Results");
     if (!resSheet) {
       resSheet = ss.insertSheet("Exam_Results");
       resSheet.appendRow(["วัน-เวลาส่ง", "รหัสนักเรียน", "ชื่อ-นามสกุล", "ชั้นเรียน", "ห้อง", "เลขที่", "รหัสวิชา", "คะแนนที่ได้", "คะแนนเต็ม", "สถานะการส่ง", "หมายเหตุ"]);
       resSheet.getRange("A1:K1").setFontWeight("bold").setBackground("#e8f5e9").setFontColor("#2e7d32");
     }
-
-    const timestamp = Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd HH:mm:ss");
     resSheet.appendRow([timestamp, studentId, studentName, level, room, no, subjectCode, totalScore, maxScore, status, status === "FORCE_LOCKED" ? "ถูกตัดสิทธิ์วิชาเนื่องจากตรวจพบการทุจริตสลับหน้าจอ" : "ส่งข้อสอบตามปกติ"]);
 
-    // บันทึกประวัติความปลอดภัยว่า ส่งข้อสอบเรียบร้อยแล้ว
     logSecurityEvent(studentId, studentName, level, subjectCode, status, `คะแนนที่ได้: ${totalScore}/${maxScore}`);
 
     return { status: "success", score: totalScore, maxScore: maxScore };
@@ -269,24 +328,40 @@ function submitExam(studentId, studentName, level, room, no, subjectCode, sheetN
   }
 }
 
-// นำเข้าข้อสอบจากไฟล์ Word (.docx) ที่แปลงเป็นรายการบนหน้าเว็บเบราว์เซอร์แล้ว
+// นำเข้าข้อสอบจากไฟล์ Word (.docx) เขียนลง Google Sheets และ Mirror ขึ้น Firebase
 function importExamQuestions(subjectCode, examData) {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheetName = "Q_" + subjectCode.toString().trim().replace(/[^a-zA-Z0-9_ก-๙]/g, "");
     
+    // 1. บันทึกลง Firebase Firestore (หากมีคีย์ระบุไว้)
+    if (FIREBASE_PROJECT_ID && FIREBASE_API_KEY) {
+      const fbExamData = {
+        subjectCode: subjectCode,
+        sheetName: sheetName,
+        questions: examData.map(q => ({
+          no: parseInt(q.no),
+          question: q.question,
+          choices: q.choices,
+          correctAns: parseInt(q.correctAns),
+          points: parseFloat(q.points)
+        }))
+      };
+      
+      writeDocumentToFirebase("exams", sheetName, fbExamData);
+    }
+    
+    // 2. บันทึกลง Google Sheet
     let qSheet = ss.getSheetByName(sheetName);
     if (qSheet) {
-      qSheet.clear(); // ล้างชีตเก่าออก
+      qSheet.clear();
     } else {
       qSheet = ss.insertSheet(sheetName);
     }
     
-    // ตั้งค่าหัวตาราง
     qSheet.appendRow(["ข้อที่", "โจทย์คำถาม", "ตัวเลือก 1", "ตัวเลือก 2", "ตัวเลือก 3", "ตัวเลือก 4", "เฉลย (เลข 1-4)", "คะแนน (เช่น 1)"]);
     qSheet.getRange("A1:H1").setFontWeight("bold").setBackground("#e3f2fd").setFontColor("#1565c0");
     
-    // เขียนคำถามลงไป
     const rowsToWrite = examData.map(q => {
       return [
         q.no,
@@ -302,8 +377,139 @@ function importExamQuestions(subjectCode, examData) {
     
     qSheet.getRange(2, 1, rowsToWrite.length, 8).setValues(rowsToWrite);
     
-    return { status: "success", message: `นำเข้าข้อสอบวิชา ${subjectCode} เรียบร้อยแล้ว ทั้งหมด ${rowsToWrite.length} ข้อ ชื่อชีต: ${sheetName}`, sheetName: sheetName };
+    return { 
+      status: "success", 
+      message: `นำเข้าข้อสอบวิชา ${subjectCode} เรียบร้อยแล้ว ทั้งหมด ${rowsToWrite.length} ข้อ (บันทึกเสร็จสิ้นทั้งชีตตารางและระบบเก็บคลาวด์)`, 
+      sheetName: sheetName 
+    };
   } catch (e) {
     return { status: "error", message: "ไม่สามารถบันทึกข้อสอบได้: " + e.toString() };
   }
+}
+
+// ==============================================
+// FIREBASE FIRESTORE REST CLIENT FOR GOOGLE APPS SCRIPT
+// ==============================================
+
+// เขียนเอกสารลง Firestore
+function writeDocumentToFirebase(collection, documentId, dataObject) {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/${collection}/${documentId}?key=${FIREBASE_API_KEY}`;
+    
+    const payload = toFirestoreDocument(dataObject);
+    const options = {
+      method: "patch", // patch จะแก้ไขข้อมูลเดิมหรือสร้างใหม่หากไม่มี
+      contentType: "application/json",
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+    
+    const response = UrlFetchApp.fetch(url, options);
+    const code = response.getResponseCode();
+    if (code !== 200) {
+      console.log(`Firebase Write Error (${code}): ` + response.getContentText());
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.log("Firebase Connection Failed (Write): " + e.toString());
+    return false;
+  }
+}
+
+// อ่านเอกสารจาก Firestore
+function readDocumentFromFirebase(collection, documentId) {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/${collection}/${documentId}?key=${FIREBASE_API_KEY}`;
+    const options = {
+      method: "get",
+      muteHttpExceptions: true
+    };
+    
+    const response = UrlFetchApp.fetch(url, options);
+    if (response.getResponseCode() === 200) {
+      const resData = JSON.parse(response.getContentText());
+      return fromFirestoreDocument(resData);
+    }
+    return null;
+  } catch (e) {
+    console.log("Firebase Connection Failed (Read): " + e.toString());
+    return null;
+  }
+}
+
+// ดึงข้อสอบและคำถามเฉพาะส่วนของนักเรียนจาก Firestore (ซ่อนเฉลย)
+function getQuestionsFromFirebase(sheetName) {
+  const doc = readDocumentFromFirebase("exams", sheetName);
+  if (!doc || !doc.questions) return null;
+  
+  // ซ่อนฟิลด์ correctAns และ points ก่อนส่งออกไปยังหน้าบ้านนักเรียน
+  return doc.questions.map(q => {
+    return {
+      no: q.no,
+      question: q.question,
+      choices: q.choices
+    };
+  });
+}
+
+// --- ตัวแปลงโครงสร้าง JSON-to-Firestore REST ---
+
+function toFirestoreDocument(jsonObj) {
+  const fields = {};
+  for (let key in jsonObj) {
+    fields[key] = toFirestoreValue(jsonObj[key]);
+  }
+  return { fields: fields };
+}
+
+function toFirestoreValue(val) {
+  if (val === null || val === undefined) {
+    return { nullValue: null };
+  }
+  if (typeof val === 'string') {
+    return { stringValue: val };
+  }
+  if (typeof val === 'number') {
+    if (Number.isInteger(val)) {
+      return { integerValue: val.toString() };
+    } else {
+      return { doubleValue: val };
+    }
+  }
+  if (typeof val === 'boolean') {
+    return { booleanValue: val };
+  }
+  if (Array.isArray(val)) {
+    return { arrayValue: { values: val.map(toFirestoreValue) } };
+  }
+  if (typeof val === 'object') {
+    return { mapValue: toFirestoreDocument(val) };
+  }
+  return { stringValue: val.toString() };
+}
+
+function fromFirestoreDocument(doc) {
+  if (!doc || !doc.fields) return {};
+  const json = {};
+  for (let key in doc.fields) {
+    json[key] = fromFirestoreValue(doc.fields[key]);
+  }
+  return json;
+}
+
+function fromFirestoreValue(field) {
+  if (!field) return null;
+  if ('stringValue' in field) return field.stringValue;
+  if ('integerValue' in field) return parseInt(field.integerValue);
+  if ('doubleValue' in field) return parseFloat(field.doubleValue);
+  if ('booleanValue' in field) return field.booleanValue;
+  if ('nullValue' in field) return null;
+  if ('arrayValue' in field && field.arrayValue.values) {
+    return field.arrayValue.values.map(fromFirestoreValue);
+  }
+  if ('mapValue' in field) {
+    return fromFirestoreDocument(field.mapValue);
+  }
+  return null;
 }
