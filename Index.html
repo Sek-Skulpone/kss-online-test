@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <!-- นำเข้า Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- นำเข้า Font Awesome สำหรับไอคอน -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- นำเข้าไลบรารี Mammoth.js สำหรับแปลงไฟล์ Word (.docx) ในบราวเซอร์ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #1a73e8;
+      --primary-hover: #1557b0;
+      --primary-light: #e8f0fe;
+      --success: #2e7d32;
+      --success-light: #e8f5e9;
+      --warning: #f2994a;
+      --danger: #d93025;
+      --danger-light: #fce8e6;
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --text: #202124;
+      --text-secondary: #5f6368;
+      --border: #dadce0;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      --shadow-premium: 0 12px 30px rgba(26, 115, 232, 0.1);
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ป้องกันการพิมพ์และการบันทึก */
+    @media print {
+      body { display: none !important; }
+    }
+
+    body, html {
+      font-family: 'Sarabun', 'Outfit', sans-serif;
+      background: var(--bg);
+      margin: 0;
+      padding: 0;
+      color: var(--text);
+      height: 100%;
+      overflow-x: hidden;
+      /* ป้องกันการคลุมดำ/คัดลอกข้อความ */
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+    }
+
+    /* การจัดหน้าคอนเทนเนอร์หลัก */
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 24px 16px;
+      min-height: calc(100vh - 48px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* สไตล์การ์ดพรีเมียม */
+    .card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 30px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(0,0,0,0.03);
+      transition: var(--transition);
+    }
+    
+    .card:hover {
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+    }
+
+    /* สไตล์ปุ่มแบบโมเดิร์น */
+    .btn {
+      cursor: pointer;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95em;
+      transition: var(--transition);
+      font-family: 'Sarabun', sans-serif;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-p {
+      background: linear-gradient(135deg, var(--primary), #1557b0);
+      color: white;
+      box-shadow: 0 4px 12px rgba(26,115,232,0.25);
+    }
+
+    .btn-p:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(26,115,232,0.35);
+      background: linear-gradient(135deg, #1557b0, #0c3d80);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success), #1b5e20);
+      color: white;
+      box-shadow: 0 4px 12px rgba(46,125,50,0.25);
+    }
+
+    .btn-success:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(46,125,50,0.35);
+    }
+
+    .btn-out {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .btn-out:hover {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-danger {
+      background: var(--danger-light);
+      color: var(--danger);
+    }
+
+    .btn-danger:hover {
+      background: var(--danger);
+      color: white;
+    }
+
+    /* ส่วนหัวโปรแกรม */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1.5px solid #f1f3f4;
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+
+    .role-badge {
+      font-size: 0.75em;
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-weight: 600;
+      border: 1px solid #c2e7ff;
+      margin-left: 8px;
+    }
+
+    .student-info {
+      font-size: 0.9em;
+      color: var(--text-secondary);
+      margin-top: 6px;
+    }
+
+    /* ตารางแสดงข้อมูลสอบ */
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 15px;
+    }
+
+    th {
+      text-align: left;
+      color: var(--text-secondary);
+      font-size: 0.85em;
+      font-weight: 700;
+      padding: 16px;
+      border-bottom: 2px solid var(--border);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 18px 16px;
+      border-bottom: 1px solid #f1f3f4;
+      font-size: 0.95em;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background-color: rgba(26,115,232,0.01);
+    }
+
+    /* กล่องข้อความ input */
+    .input-flat {
+      padding: 12px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      box-sizing: border-box;
+      margin-top: 6px;
+      font-size: 0.95em;
+      font-family: 'Sarabun', sans-serif;
+      transition: var(--transition);
+      background: var(--bg);
+    }
+
+    .input-flat:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: white;
+      box-shadow: 0 0 0 4px rgba(26,115,232,0.15);
+    }
+
+    /* ตัวล็อกสลับตัวเลือกตัวกรอง */
+    .filter-section {
+      background: var(--primary-light);
+      padding: 20px;
+      border-radius: 16px;
+      margin-bottom: 24px;
+      border: 1px solid #c2e7ff;
+    }
+
+    /* สไลเดอร์แจ้งเตือนเหตุการณ์ */
+    #loader {
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 11000;
+      backdrop-filter: blur(4px);
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid var(--primary);
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      animation: spin 1s cubic-bezier(0.55, 0.085, 0.68, 0.53) infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+
+    /* หน้าล็อกอิน Glassmorphism */
+    .login-container {
+      max-width: 400px;
+      margin: 80px auto;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.5);
+      border-radius: 24px;
+      box-shadow: var(--shadow-premium);
+      padding: 40px 30px;
+      text-align: center;
+    }
+
+    /* หน้าจอควบคุมข้อสอบในบราวเซอร์ (Native Exam Overlay) */
+    #exam-viewport-container {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: var(--bg);
+      display: none;
+      flex-direction: column;
+    }
+
+    #exam-header-hud {
+      background: #202124;
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      border-bottom: 4px solid var(--danger);
+    }
+
+    #exam-workspace {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      padding: 20px;
+      gap: 20px;
+    }
+
+    #exam-navigation-panel {
+      width: 260px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+    }
+
+    .q-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      overflow-y: auto;
+      flex: 1;
+      margin-top: 15px;
+      padding-right: 5px;
+    }
+
+    .q-nav-btn {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: white;
+      font-weight: 600;
+      font-size: 0.9em;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .q-nav-btn.answered {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .q-nav-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+      box-shadow: 0 0 10px rgba(26,115,232,0.3);
+    }
+
+    #exam-question-card {
+      flex: 1;
+      background: white;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid var(--border);
+      overflow-y: auto;
+    }
+
+    .option-card {
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-top: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.05em;
+      transition: var(--transition);
+    }
+
+    .option-card:hover {
+      background: rgba(26,115,232,0.04);
+      border-color: var(--primary);
+    }
+
+    .option-card.selected {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .option-circle {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--text-secondary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+      background: white;
+    }
+
+    .option-card.selected .option-circle {
+      border-color: var(--primary);
+      background: var(--primary);
+    }
+
+    .option-card.selected .option-circle::after {
+      content: "";
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+    }
+
+    /* Modal ป้องกันโกง */
+    #anti-cheat-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 20000;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .warning-box {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      padding: 40px;
+      max-width: 500px;
+      text-align: center;
+      border-top: 8px solid var(--danger);
+    }
+
+    /* ตารางตรวจทานข้อสอบตอน Import Word */
+    .preview-import-container {
+      background: white;
+      padding: 20px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      margin-top: 20px;
+    }
+
+    .preview-table-wrapper {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+
+    .preview-table th {
+      background: #f8f9fa;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    /* หน้าทำข้อสอบ iframe เก่า */
+    #exam-iframe-container {
+      position: fixed;
+      inset: 48px 0 0 0;
+      z-index: 10000;
+      background: white;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ตัวโหลดหมุนๆ -->
+<div id="loader" class="hidden">
+  <div class="spinner"></div>
+  <p id="loader-text" style="margin-top: 15px; font-weight: 500; color: var(--text-secondary);">กำลังดำเนินการ...</p>
+</div>
+
+<!-- หน้าต่างเตือนละเมิดกฎการสอบ (Anti-Cheat Modal Warning) -->
+<div id="anti-cheat-modal">
+  <div class="warning-box">
+    <i class="fa fa-triangle-exclamation" style="font-size: 4em; color: var(--danger); margin-bottom: 20px;"></i>
+    <h2 style="color: var(--danger); margin-top:0;">⚠️ ตรวจพบการทำผิดระเบียบ!</h2>
+    <p style="font-size: 1.1em; line-height: 1.6; color: var(--text);">
+      ห้ามสลับหน้าจอ ออกจากโหมดเต็มจอ หรือแอบส่องระบบเด็ดขาด!<br>
+      สถานะการละเมิดกฎ: <b style="color: var(--danger); font-size:1.2em;"><span id="cheat-count-display">0</span> / 2 ครั้ง</b>
+    </p>
+    <p style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 25px;">
+      หากละเมิดครบ 2 ครั้ง ระบบจะระงับการสอบและส่งคะแนนที่ทำได้ทันที
+    </p>
+    <button class="btn btn-p" id="dismiss-warning-btn" onclick="resumeExamAfterWarning()">ฉันยอมรับข้อตกลงและจะสอบต่อในแบบเต็มจอ</button>
+  </div>
+</div>
+
+<!-- ==============================================
+     หน้าสอบออนไลน์บนเว็บโดยตรง (NATIVE EXAM OVERLAY) 
+     ============================================== -->
+<div id="exam-viewport-container">
+  <div id="exam-header-hud">
+    <div>
+      <span style="font-weight: 700; font-size: 1.1em;"><i class="fa fa-graduation-cap"></i> ข้อสอบวิชา: <span id="hud-subject-name">กำลังโหลด...</span></span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <span style="font-size: 1.25em; color: #ffca28; font-family:'Outfit'; font-weight: 700;">
+        <i class="fa fa-clock"></i> เหลือเวลา: <span id="hud-time-display">00:00</span>
+      </span>
+      <button class="btn btn-danger" style="padding: 6px 14px; font-size: 0.85em;" onclick="confirmEarlySubmit()"><i class="fa fa-paper-plane"></i> ส่งข้อสอบ</button>
+    </div>
+  </div>
+
+  <div id="exam-workspace">
+    <!-- แผงรายชื่อข้อสอบและปุ่มนำทาง -->
+    <div id="exam-navigation-panel">
+      <h4 style="margin: 0 0 10px 0; color: var(--text-secondary);"><i class="fa fa-list-ol"></i> ข้อสอบทั้งหมด</h4>
+      <small style="color: var(--text-secondary)">คลิกเลขข้อเพื่อข้ามไปทำข้อนั้นได้ทันที</small>
+      <div class="q-grid" id="hud-q-grid"></div>
+    </div>
+
+    <!-- บอร์ดแสดงผลโจทย์และคำตอบแบบฟอร์ม -->
+    <div id="exam-question-card">
+      <div style="flex: 1;">
+        <div style="display:flex; justify-content: space-between; border-bottom:1.5px solid #f1f3f4; padding-bottom: 12px; margin-bottom: 20px;">
+          <h3 style="margin: 0; color: var(--primary);">ข้อที่ <span id="active-q-num">1</span></h3>
+          <span style="color: var(--text-secondary); font-size:0.9em;" id="active-q-points">1 คะแนน</span>
+        </div>
+        <div id="active-q-text" style="font-size: 1.2em; line-height: 1.6; margin-bottom: 25px; font-weight: 500;">...โจทย์คำถาม...</div>
+        
+        <div class="option-card" onclick="selectOption(1)" id="opt-card-1">
+          <div class="option-circle"></div>
+          <div id="opt-text-1">ตัวเลือก 1</div>
+        </div>
+        <div class="option-card" onclick="selectOption(2)" id="opt-card-2">
+          <div class="option-circle"></div>
+          <div id="opt-text-2">ตัวเลือก 2</div>
+        </div>
+        <div class="option-card" onclick="selectOption(3)" id="opt-card-3">
+          <div class="option-circle"></div>
+          <div id="opt-text-3">ตัวเลือก 3</div>
+        </div>
+        <div class="option-card" onclick="selectOption(4)" id="opt-card-4">
+          <div class="option-circle"></div>
+          <div id="opt-text-4">ตัวเลือก 4</div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; margin-top: 30px; border-top: 1.5px solid #f1f3f4; padding-top: 20px;">
+        <button class="btn btn-out" id="prev-q-btn" onclick="navigateQuestion(-1)"><i class="fa fa-arrow-left"></i> ข้อก่อนหน้า</button>
+        <button class="btn btn-p" id="next-q-btn" onclick="navigateQuestion(1)">ข้อถัดไป <i class="fa fa-arrow-right"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- แถบแสดงเวลากรณีข้อสอบลิงก์ Google Form เดิม -->
+<div id="exam-iframe-container">
+  <iframe id="exam-iframe" src=""></iframe>
+</div>
+
+<!-- ==============================================
+     หน้าจอหลักในเว็บ (MAIN DASHBOARD CONTAINER)
+     ============================================== -->
+<div class="container" id="main-content">
+  
+  <!-- หน้าล็อกอิน -->
+  <div id="login-page" class="login-container">
+    <div style="background: var(--primary-light); width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto;">
+      <i class="fa fa-user-shield" style="font-size: 1.8em; color: var(--primary);"></i>
+    </div>
+    <h2 style="color:var(--primary); margin:0 0 5px 0; font-family:'Outfit';">ระบบสอบออนไลน์ปลอดภัย</h2>
+    <p style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 25px;">โรงเรียน | ระบบจำกัดการทุจริตแบบเรียลไทม์</p>
+    
+    <div style="text-align: left; margin-bottom: 15px;">
+      <small style="color:var(--text-secondary); font-weight:600;">ชื่อผู้ใช้งาน / รหัสนักเรียน</small>
+      <input type="text" id="user" class="input-flat" placeholder="รหัสนักเรียน หรือ ชื่อผู้ใช้ครู">
+    </div>
+    <div style="text-align: left; margin-bottom: 25px;">
+      <small style="color:var(--text-secondary); font-weight:600;">รหัสผ่านล็อกอิน</small>
+      <input type="password" id="pass" class="input-flat" placeholder="รหัสผ่าน">
+    </div>
+    <button class="btn btn-p" style="width: 100%; height:48px;" onclick="doLogin()">
+      <i class="fa fa-sign-in-alt"></i> ลงชื่อเข้าใช้งาน
+    </button>
+  </div>
+
+  <!-- หน้าจอสำหรับนักเรียน -->
+  <div id="student-page" class="card hidden">
+    <div class="header">
+      <div>
+        <b style="font-size: 1.3em;">สวัสดีคุณ, <span id="s-name"></span></b>
+        <span class="role-badge" id="s-role">User</span>
+        <div class="student-info">ชั้นมัธยมศึกษาปีที่ <span id="s-lv"></span> ห้อง <span id="s-room"></span> | เลขที่ <span id="s-no"></span></div>
+      </div>
+      <button class="btn btn-out" onclick="logout()"><i class="fa fa-sign-out-alt"></i> ออกจากระบบ</button>
+    </div>
+    
+    <div class="filter-section">
+      <label style="font-weight:600;"><i class="fa fa-calendar-day"></i> เลือกวันที่สอบเพื่อดูตารางเวลา:</label>
+      <input type="date" id="s-date-filter" class="input-flat" onchange="renderStudentTable()">
+    </div>
+
+    <h3 style="color: var(--primary); margin-top:25px;"><i class="fa fa-calendar-check"></i> รายการสอบในวันที่เลือก</h3>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>วันที่สอบ</th>
+            <th>เวลาสอบ</th>
+            <th>วิชา / ระยะเวลา</th>
+            <th style="text-align: right;">สถานะการเข้าทำ</th>
+          </tr>
+        </thead>
+        <tbody id="s-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- หน้าจอสำหรับครูผู้สอน / แอดมิน -->
+  <div id="teacher-page" class="card hidden">
+    <div class="header">
+      <div>
+        <b style="font-size: 1.3em;">ยินดีต้อนรับ, <span id="t-name"></span></b>
+        <span class="role-badge" id="t-role">Admin</span>
+      </div>
+      <button class="btn btn-out" onclick="logout()"><i class="fa fa-sign-out-alt"></i> ออกจากระบบ</button>
+    </div>
+    
+    <div class="filter-section" style="display: grid; grid-template-columns: 1fr 1fr; gap:15px;">
+      <div>
+        <label style="font-weight:600;">1. เลือกระดับชั้นเรียน:</label>
+        <select id="t-level" class="input-flat" onchange="fetchTeacherData()">
+          <option value="">-- เลือกชั้นเรียน --</option>
+          <option>ม.1</option><option>ม.2</option><option>ม.3</option><option>ม.4</option><option>ม.5</option><option>ม.6</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-weight:600;">2. เลือกวันที่ต้องการจัดการ:</label>
+        <input type="date" id="t-date-filter" class="input-flat" onchange="renderTeacherTable()">
+      </div>
+    </div>
+
+    <!-- พื้นที่แสดงรายวิชาสอบ -->
+    <div id="t-table-area" style="overflow-x:auto;"></div>
+
+    <!-- ==============================================
+         ฟังก์ชันนำเข้าข้อสอบจากไฟล์ Word (.docx)
+         ============================================== -->
+    <div id="docx-import-area" class="card" style="margin-top: 30px; border: 1.5px dashed var(--primary); background: #fdfdfd; padding: 25px; border-radius: 16px;">
+      <h3 style="margin-top:0; color: var(--primary);"><i class="fa fa-file-word"></i> ระบบอัปโหลดข้อสอบจากไฟล์ Word (.docx)</h3>
+      <p style="font-size: 0.9em; color: var(--text-secondary);">อัปโหลดไฟล์ข้อสอบเวิร์ด ระบบจะอ่านคำถามและเฉลยให้แสดงผลเป็นข้อสอบสอบบนเว็บได้ทันที</p>
+      
+      <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; align-items: end;">
+        <div>
+          <label style="font-size:0.85em; font-weight:600;">ระบุรหัสวิชา (ภาษาอังกฤษ/ตัวเลข):</label>
+          <input type="text" id="import-subject-code" class="input-flat" placeholder="เช่น MA11101">
+        </div>
+        <div>
+          <label style="font-size:0.85em; font-weight:600;">เลือกไฟล์ข้อสอบ .docx:</label>
+          <input type="file" id="docx-file-input" class="input-flat" accept=".docx" style="padding: 7px 12px;" onchange="handleWordFileUpload(event)">
+        </div>
+      </div>
+
+      <!-- พื้นที่พรีวิวสำหรับการตรวจทานแก้ไขก่อนบันทึก -->
+      <div id="import-preview-section" class="preview-import-container hidden">
+        <h4 style="margin-top:0; color: var(--success); display:flex; justify-content:space-between; align-items:center;">
+          <span><i class="fa fa-clipboard-check"></i> ตรวจสอบคำถามที่ระบบถอดความได้</span>
+          <span style="font-size:0.8em; color:var(--text-secondary)">คุณสามารถพิมพ์แก้ไขคำถาม/ตัวเลือก/เฉลย ในตารางนี้ได้เลย</span>
+        </h4>
+        <div class="preview-table-wrapper">
+          <table class="preview-table" style="margin:0;">
+            <thead>
+              <tr style="background:#f8f9fa;">
+                <th style="width: 50px;">ข้อที่</th>
+                <th>โจทย์คำถาม</th>
+                <th>ตัวเลือก 1 (ก / A)</th>
+                <th>ตัวเลือก 2 (ข / B)</th>
+                <th>ตัวเลือก 3 (ค / C)</th>
+                <th>ตัวเลือก 4 (ง / D)</th>
+                <th style="width: 100px;">เฉลย (เลข 1-4)</th>
+                <th style="width: 70px;">คะแนน</th>
+                <th style="width: 50px;">ลบ</th>
+              </tr>
+            </thead>
+            <tbody id="import-preview-body"></tbody>
+          </table>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px;">
+          <button class="btn btn-out" onclick="addQuestionToPreview()"><i class="fa fa-plus"></i> เพิ่มคำถามเปล่า</button>
+          <button class="btn btn-success" onclick="saveImportedQuestions()"><i class="fa fa-cloud-upload-alt"></i> บันทึกข้อสอบเข้าสู่ชีตวิชา</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ศูนย์ปลดล็อกเครื่องนักเรียน -->
+    <div id="admin-area" class="admin-box card hidden" style="background: #f1f8e9; border: 1px dashed var(--success); margin-top: 30px;">
+      <h3 style="margin-top: 0; color: var(--success);"><i class="fa fa-unlock-keyhole"></i> ศูนย์จัดการ: ปลดล็อกหน้าต่างวิชาให้นักเรียน</h3>
+      <p style="font-size: 0.9em; color: var(--text-secondary);">ใช้สำหรับปลดล็อกให้นักเรียนที่กดหลุดหรือระบบสลับเบราว์เซอร์แล้วต้องการกลับเข้าไปทำใหม่</p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end;">
+        <div><small style="font-weight:600;">รหัสนักเรียน</small><input type="text" id="u-sid" class="input-flat" placeholder="รหัสนักเรียน"></div>
+        <div><small style="font-weight:600;">รหัสวิชา</small><input type="text" id="u-code" class="input-flat" placeholder="รหัสวิชา เช่น MA11101"></div>
+        <button class="btn btn-success" onclick="doUnlock()"><i class="fa fa-key"></i> ปลดล็อกข้อสอบ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let userData = null;
+  let rawExamData = null; 
+  let timerIntervals = [];
+  let isExamMode = false;
+  let cheatDetected = false; 
+
+  // ข้อมูลข้อสอบปัจจุบันและคำตอบ
+  let currentExamCode = "";
+  let currentExamSheet = "";
+  let currentExamName = "";
+  let questionsData = [];
+  let studentAnswers = [];
+  let activeQuestionIndex = 0;
+  let examTimeLeftSeconds = 0;
+  let examTimerInterval = null;
+
+  // สำหรับการจับค่านับการละเมิดกฎ
+  let violationCount = 0;
+  const MAX_VIOLATIONS = 2;
+
+  // รายการคำถามที่ดึงมาจาก Word ปัจจุบัน
+  let parsedQuestions = [];
+
+  window.onload = () => {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('s-date-filter').value = today;
+    document.getElementById('t-date-filter').value = today;
+    
+    // ตั้งค่าความปลอดภัยสำหรับหน้าหลักบราวเซอร์ (คีย์บอร์ดและเมาส์ลัด)
+    initKeyboardSecurity();
+  };
+
+  function loading(show, text = "กำลังดำเนินการ...") { 
+    document.getElementById('loader-text').innerText = text;
+    document.getElementById('loader').classList[show ? 'remove' : 'add']('hidden'); 
+  }
+
+  function logout() {
+    loading(true, "กำลังออกจากระบบ...");
+    google.script.run.withSuccessHandler(url => { 
+      window.open(url, '_top'); 
+    }).getScriptUrl();
+  }
+
+  function doLogin() {
+    const u = document.getElementById('user').value.trim();
+    const p = document.getElementById('pass').value.trim();
+    if(!u || !p) return alert("กรุณากรอกชื่อผู้ใช้และรหัสผ่าน");
+    loading(true, "กำลังเข้าสู่ระบบ...");
+    google.script.run.withSuccessHandler(res => {
+      loading(false);
+      if(res.status === "success") {
+        userData = res;
+        document.getElementById('login-page').classList.add('hidden');
+        if(res.role === "Student") {
+          document.getElementById('student-page').classList.remove('hidden');
+          document.getElementById('s-name').innerText = res.name;
+          document.getElementById('s-lv').innerText = res.level;
+          document.getElementById('s-room').innerText = res.room;
+          document.getElementById('s-no').innerText = res.no;
+          document.getElementById('s-role').innerText = res.displayRole;
+          fetchStudentData();
+        } else {
+          document.getElementById('teacher-page').classList.remove('hidden');
+          document.getElementById('t-name').innerText = res.name;
+          document.getElementById('t-role').innerText = res.displayRole;
+          if(res.isAdmin) document.getElementById('admin-area').classList.remove('hidden');
+        }
+      } else {
+        alert("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+      }
+    }).login(u, p);
+  }
+
+  function fetchStudentData() {
+    loading(true, "กำลังโหลดข้อมูลตารางสอบ...");
+    google.script.run.withSuccessHandler(data => {
+      loading(false);
+      rawExamData = data;
+      renderStudentTable();
+    }).getExamData(userData.level, userData.sid);
+  }
+
+  function renderStudentTable() {
+    timerIntervals.forEach(clearInterval); 
+    timerIntervals = [];
+    const selectedDate = document.getElementById('s-date-filter').value;
+    if(!rawExamData) return;
+
+    let html = "";
+    const now = new Date();
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const filteredExams = rawExamData.exams.filter(ex => ex.isoDate === selectedDate);
+
+    filteredExams.forEach((ex, i) => {
+      const isFinished = rawExamData.finished.includes(ex.subjectCode);
+      const examDate = ex.isoDate;
+      const targetDateTime = new Date(examDate + 'T' + ex.startTimeG).getTime();
+
+      let statusCol = "";
+      if (isFinished) {
+        statusCol = '<span class="status-done" style="color:var(--success); font-weight:600;"><i class="fa fa-check-circle"></i> สอบเสร็จแล้ว</span>';
+      } else if (examDate > todayStr) {
+        statusCol = `<div class="status-wait" style="color:var(--primary);"><i class="fa fa-calendar-days"></i> ยังไม่ถึงวันสอบ</div>`;
+      } else if (examDate < todayStr) {
+        statusCol = `<div class="status-wait" style="color:var(--danger);"><i class="fa fa-times-circle"></i> หมดเวลาสอบแล้ว</div>`;
+      } else {
+        if (now.getTime() < targetDateTime) {
+          statusCol = `<div class="status-wait" style="font-weight: 500;">รอเวลาเริ่มสอบ<span id="timer-${i}" class="countdown"></span></div>`;
+          runCountdown(ex, i);
+        } else {
+          // สามารถเปิดสอบได้
+          statusCol = ex.url ? 
+            `<button class="btn btn-p" onclick="confirmOpenExam('${ex.url}', '${ex.isNative}', '${ex.targetSheetName}', '${ex.subjectCode}', '${ex.subjectName}', ${ex.duration})"><i class="fa fa-play"></i> เริ่มสอบ</button>` : 
+            `<div class="status-wait" style="color:var(--warning);">รอลิงก์ข้อสอบจากครู...</div>`;
+        }
+      }
+      
+      html += `<tr>
+        <td><b>${ex.date}</b></td>
+        <td>${ex.timeRange}</td>
+        <td>
+          <b style="color:var(--primary);">${ex.subjectCode}</b><br>
+          <small style="color:var(--text-secondary);">${ex.subjectName} (${ex.duration} นาที)</small>
+          ${ex.isNative ? '<span style="font-size:0.7em; background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9; padding:1px 5px; border-radius:4px; margin-left:5px;">สอบในเว็บ</span>' : ''}
+        </td>
+        <td style="text-align: right;">${statusCol}</td>
+      </tr>`;
+    });
+    
+    document.getElementById('s-body').innerHTML = html || "<tr><td colspan='4' style='text-align:center; padding: 30px; color: var(--text-secondary);'>ไม่มีข้อมูลการสอบในวันที่เลือก</td></tr>";
+  }
+
+  function runCountdown(ex, idx) {
+    const timer = setInterval(() => {
+      const el = document.getElementById(`timer-${idx}`);
+      if (!el) return;
+      const now = new Date();
+      const target = new Date(ex.isoDate + 'T' + ex.startTimeG);
+      const diff = target.getTime() - now.getTime();
+      if (diff <= 0) { 
+        el.innerText = " | พร้อมเข้าสอบ (กรุณารีเฟรช)"; 
+        el.style.color = "var(--success)"; 
+        clearInterval(timer); 
+      } else {
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        el.innerText = ` | อีก: ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+        el.style.color = "var(--warning)";
+      }
+    }, 1000);
+    timerIntervals.push(timer);
+  }
+
+  function fetchTeacherData() {
+    const lv = document.getElementById('t-level').value;
+    if(!lv) return;
+    loading(true, "กำลังโหลดวิชาสอบ...");
+    google.script.run.withSuccessHandler(data => {
+      loading(false);
+      rawExamData = data;
+      renderTeacherTable();
+    }).getExamData(lv, null);
+  }
+
+  function renderTeacherTable() {
+    const selectedDate = document.getElementById('t-date-filter').value;
+    if(!rawExamData) return;
+
+    const filteredExams = rawExamData.exams.filter(ex => ex.isoDate === selectedDate);
+    
+    let html = `<table><thead><tr><th>เวลาสอบ</th><th>รหัสวิชา</th><th>ลิงก์/ชื่อชีตข้อสอบ (เช่น Q_วิชา)</th><th style="width:80px; text-align:center;">บันทึก</th></tr></thead><tbody>`;
+    filteredExams.forEach(ex => {
+      html += `<tr>
+        <td style="font-size:0.9em; color:var(--text-secondary);">${ex.timeRange}</td>
+        <td><b>${ex.subjectCode}</b><br><small>${ex.subjectName}</small></td>
+        <td>
+          <input type="text" id="link-${ex.rowNum}" class="input-flat" value="${ex.url}" style="margin:0; font-size:0.9em;">
+        </td>
+        <td style="text-align:center;">
+          <button class="btn btn-p" style="padding: 8px 14px;" onclick="saveLink('${ex.rowNum}')"><i class="fa fa-save"></i></button>
+        </td>
+      </tr>`;
+    });
+    
+    document.getElementById('t-table-area').innerHTML = (filteredExams.length > 0) ? 
+      (html + "</tbody></table>") : 
+      "<div style='text-align:center; padding:30px; color:var(--text-secondary);'><i class='fa fa-circle-exclamation' style='font-size:2em; margin-bottom:10px; display:block;'></i>ไม่มีข้อมูลการสอบในวันที่เลือก</div>";
+  }
+
+  function saveLink(row) {
+    const url = document.getElementById('link-'+row).value.trim();
+    loading(true, "กำลังอัปเดตวิชาสอบ...");
+    google.script.run.withSuccessHandler(msg => { 
+      loading(false); 
+      alert(msg); 
+      fetchTeacherData(); 
+    }).updateLink(document.getElementById('t-level').value, row, url);
+  }
+
+  function doUnlock() {
+    const sid = document.getElementById('u-sid').value.trim();
+    const code = document.getElementById('u-code').value.trim();
+    if(!sid || !code) return alert("กรุณากรอกรหัสนักเรียนและรหัสวิชาที่ต้องการปลดล็อก");
+    loading(true, "กำลังดำเนินการปลดล็อก...");
+    google.script.run.withSuccessHandler(msg => { 
+      loading(false); 
+      alert(msg); 
+      document.getElementById('u-sid').value = "";
+      document.getElementById('u-code').value = "";
+    }).unlockStudent(document.getElementById('t-level').value, sid, code);
+  }
+
+  // ==============================================
+  // ส่วนเริ่มข้อสอบและการจัดการความปลอดภัยการทุจริต (PROCTORING SYSTEMS)
+  // ==============================================
+
+  function confirmOpenExam(url, isNative, targetSheetName, code, name, duration) {
+    const isNativeExam = (isNative === "true");
+    const modeText = isNativeExam ? "ข้อสอบนี้จะเป็นระบบ Native บนเว็บ (ป้องกันการลอกเต็มระบบ)" : "ข้อสอบนี้ใช้ผ่านลิงก์ชีตเดิม (Google Forms)";
+    
+    const text = `ยืนยันการเข้าสอบวิชา [${code}] ${name} ?\n\nข้อกำหนดความปลอดภัยสูง:\n- ระบบจะบังคับเปิดโหมดเต็มจอ (Fullscreen)\n- ห้ามกดยกเลิกโหมดเต็มจอเด็ดขาด\n- ห้ามสลับแท็บ ย่อจอ หรือเปิดโปรแกรมอื่นแอบดูคำตอบ\n- ระบบจะจับเวลาสอบ ${duration} นาที\n\n(${modeText})\n\nคุณพร้อมที่จะเริ่มสอบแล้วใช่หรือไม่?`;
+    
+    if (!confirm(text)) return;
+    
+    currentExamCode = code;
+    currentExamSheet = targetSheetName;
+    currentExamName = name;
+    violationCount = 0;
+    
+    loading(true, "กำลังเตรียมห้องสอบและลงทะเบียนเข้าสอบ...");
+    
+    // ลงทะเบียนการเข้าสอบในชีตหลักของนักเรียน เพื่อบล็อกการเปิดหลายหน้าต่าง
+    google.script.run.withSuccessHandler(() => {
+      if (isNativeExam) {
+        // ดึงคำถามจากชีตมาเรนเดอร์ในหน้าหลัก
+        google.script.run.withSuccessHandler(questions => {
+          loading(false);
+          if (!questions || questions.error || questions.length === 0) {
+            alert("ไม่สามารถโหลดข้อสอบได้ หรือไม่พบชีตคำถามในระบบ กรุณาติดต่อครูผู้สอน");
+            fetchStudentData();
+            return;
+          }
+          questionsData = questions;
+          studentAnswers = new Array(questions.length).fill(0); // ล้างคำตอบ (0 คือยังไม่ตอบ)
+          activeQuestionIndex = 0;
+          
+          enterFullscreen();
+          startNativeExamUI(duration);
+        }).getQuestions(targetSheetName);
+      } else {
+        // สอบผ่าน IFrame Google Form เดิม
+        loading(false);
+        enterFullscreen();
+        startIframeExamUI(url, duration);
+      }
+    }).recordEntry(userData.sid, userData.level, code);
+  }
+
+  // เรียกขอสิทธิ์โหมดเต็มจอ
+  function enterFullscreen() {
+    const docEl = document.documentElement;
+    if (docEl.requestFullscreen) {
+      docEl.requestFullscreen().catch(err => {
+        console.log("Error entering fullscreen: " + err.message);
+      });
+    } else if (docEl.webkitRequestFullscreen) {
+      docEl.webkitRequestFullscreen();
+    }
+  }
+
+  // เริ่มระบบข้อสอบและเวลาสอบแบบดึงจากชีต (Native UI)
+  function startNativeExamUI(durationMins) {
+    isExamMode = true;
+    
+    // ตั้งค่าหน้าจอ
+    document.getElementById('main-content').classList.add('hidden');
+    document.getElementById('hud-subject-name').innerText = currentExamName;
+    document.getElementById('exam-viewport-container').style.display = 'flex';
+    
+    // เรนเดอร์โจทย์และตัวนำทางข้อ
+    renderQuestionGrid();
+    showActiveQuestion();
+    
+    // เริ่มจับเวลา
+    examTimeLeftSeconds = durationMins * 60;
+    updateTimerHUD();
+    examTimerInterval = setInterval(() => {
+      examTimeLeftSeconds--;
+      updateTimerHUD();
+      if (examTimeLeftSeconds <= 0) {
+        clearInterval(examTimerInterval);
+        alert("หมดเวลาทำข้อสอบแล้ว! ระบบจะส่งคำตอบโดยอัตโนมัติ");
+        submitNativeExamAnswers("TIMEOUT");
+      }
+    }, 1000);
+    
+    // เปิดระบบความปลอดภัย
+    initAntiCheatSystem(true); // true = native (เปิดโหมดจับ focus loss เต็มที่)
+  }
+
+  // เริ่มระบบข้อสอบแบบ IFrame เก่า
+  function startIframeExamUI(url, durationMins) {
+    isExamMode = true;
+    
+    // ตั้งค่าหน้าจอ
+    document.getElementById('main-content').classList.add('hidden');
+    document.getElementById('exam-iframe').src = url;
+    document.getElementById('exam-iframe-container').style.display = 'block';
+    
+    // เนื่องจากระบบ Iframe เมื่อนักเรียนทำข้อสอบ โฟกัสจะไปอยู่ที่ตัวข้อสอบใน iframe
+    // ทำให้เบราว์เซอร์ตรวจจับ focus loss (blur) ไม่ได้สมบูรณ์ เพราะมันจะเบลอหน้าหลัก
+    // ดังนั้น ถ้าเป็น iframe เราจะใช้ anti-cheat แบบกรอง
+    initAntiCheatSystem(false); // false = iframe (ไม่จับ blur ของตัวบราวเซอร์ เพื่อไม่ให้เกิด False Positive)
+    
+    // จับเวลาแบบ HUD แถบบน
+    alert("ระบบกำลังเปิดข้อสอบภายนอกในพื้นที่ปลอดภัย กรุณาสอบอย่างซื่อสัตย์");
+  }
+
+  function updateTimerHUD() {
+    const display = document.getElementById('hud-time-display');
+    if (!display) return;
+    const mins = Math.floor(examTimeLeftSeconds / 60);
+    const secs = examTimeLeftSeconds % 60;
+    display.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  // เรนเดอร์แผนผังคำนำทางข้อสอบด้านซ้าย
+  function renderQuestionGrid() {
+    const grid = document.getElementById('hud-q-grid');
+    let html = "";
+    questionsData.forEach((q, idx) => {
+      const isAnswered = studentAnswers[idx] !== 0;
+      const classList = `q-nav-btn ${idx === activeQuestionIndex ? 'active' : ''} ${isAnswered ? 'answered' : ''}`;
+      html += `<button class="${classList}" onclick="jumpToQuestion(${idx})">${idx + 1}</button>`;
+    });
+    grid.innerHTML = html;
+  }
+
+  // แสดงโจทย์ที่เลือกทำอยู่ในปัจจุบัน
+  function showActiveQuestion() {
+    const q = questionsData[activeQuestionIndex];
+    document.getElementById('active-q-num').innerText = activeQuestionIndex + 1;
+    document.getElementById('active-q-points').innerText = "1 คะแนน";
+    document.getElementById('active-q-text').innerText = q.question;
+    
+    // ตัวเลือก 4 ข้อ
+    for (let i = 1; i <= 4; i++) {
+      const optText = q.choices[i - 1];
+      const card = document.getElementById(`opt-card-${i}`);
+      const textSpan = document.getElementById(`opt-text-${i}`);
+      
+      textSpan.innerText = optText || `ไม่มีตัวเลือกที่ ${i}`;
+      card.className = "option-card";
+      
+      // แสดงสถานะที่เคยเลือกคำตอบไว้
+      if (studentAnswers[activeQuestionIndex] === i) {
+        card.classList.add('selected');
+      }
+    }
+    
+    // ปิดปุ่มกลับและถัดไปตามความเหมาะสม
+    document.getElementById('prev-q-btn').disabled = (activeQuestionIndex === 0);
+    document.getElementById('next-q-btn').disabled = (activeQuestionIndex === questionsData.length - 1);
+    
+    // ไฮไลต์ปุ่มทางลัดด้านซ้าย
+    renderQuestionGrid();
+  }
+
+  function selectOption(choiceIdx) {
+    studentAnswers[activeQuestionIndex] = choiceIdx;
+    showActiveQuestion();
+  }
+
+  function jumpToQuestion(idx) {
+    activeQuestionIndex = idx;
+    showActiveQuestion();
+  }
+
+  function navigateQuestion(direction) {
+    const targetIdx = activeQuestionIndex + direction;
+    if (targetIdx >= 0 && targetIdx < questionsData.length) {
+      activeQuestionIndex = targetIdx;
+      showActiveQuestion();
+    }
+  }
+
+  // ปุ่มกดส่งข้อสอบโดยนักเรียน
+  function confirmEarlySubmit() {
+    const unansweredCount = studentAnswers.filter(ans => ans === 0).length;
+    let confirmText = "คุณต้องการส่งข้อสอบวิชานี้ใช่หรือไม่?";
+    if (unansweredCount > 0) {
+      confirmText = `⚠️ คุณยังตอบข้อสอบไม่ครบ!\nมีข้อสอบที่ยังไม่ได้ตอบอีก ${unansweredCount} ข้อ\n\nต้องการส่งคำตอบและออกจากห้องสอบเลยใช่หรือไม่?`;
+    }
+    if (confirm(confirmText)) {
+      submitNativeExamAnswers("SUBMITTED");
+    }
+  }
+
+  // ส่งข้อมูลเข้าเซิร์ฟเวอร์เพื่อคำนวณและล็อกอิน
+  function submitNativeExamAnswers(status) {
+    clearInterval(examTimerInterval);
+    loading(true, "กำลังส่งกระดาษคำตอบและคำนวณคะแนน...");
+    
+    google.script.run.withSuccessHandler(res => {
+      loading(false);
+      isExamMode = false;
+      
+      // ปิดโหมด Fullscreen
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(err => console.log(err));
+      }
+      
+      // ปิดหน้าจอสอบ
+      document.getElementById('exam-viewport-container').style.display = 'none';
+      document.getElementById('main-content').classList.remove('hidden');
+      
+      if (res.status === "success") {
+        if (status === "FORCE_LOCKED") {
+          alert(`🔴 คุณถูกตัดสิทธิ์สอบทันทีเนื่องจากการสลับหน้าจอเกินกำหนด!\nระบบได้เก็บบันทึกประวัติและคะแนนที่ทำไว้เรียบร้อยแล้ว\nคะแนนสอบของวิชานี้เท่ากับ: ${res.score} / ${res.maxScore}`);
+        } else {
+          alert(`🎉 ส่งข้อสอบเสร็จสิ้นเรียบร้อยแล้ว!\nคะแนนสอบของคุณ: ${res.score} / ${res.maxScore} คะแนน`);
+        }
+      } else {
+        alert("เกิดข้อผิดพลาดในการบันทึกคะแนน: " + res.message);
+      }
+      
+      // รีเฟรชข้อมูลนักเรียนใหม่
+      fetchStudentData();
+    }).submitExam(
+      userData.sid, 
+      userData.name, 
+      userData.level, 
+      userData.room, 
+      userData.no, 
+      currentExamCode, 
+      currentExamSheet, 
+      studentAnswers, 
+      status
+    );
+  }
+
+  // ออกจากการสอบในกรณีใช้ลิงก์ Form แบบเก่า
+  function forceExitExam() {
+    isExamMode = false;
+    document.getElementById('exam-iframe-container').style.display = 'none';
+    document.getElementById('exam-iframe').src = "";
+    document.getElementById('main-content').classList.remove('hidden');
+    
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(err => console.log(err));
+    }
+    fetchStudentData();
+  }
+
+  // ==============================================
+  // ส่วนตรวจสอบความปลอดภัยแบบเรียลไทม์ (ANTI-CHEAT HANDLERS)
+  // ==============================================
+  
+  function initKeyboardSecurity() {
+    // 1. บล็อกการคลิกขวา
+    document.addEventListener("contextmenu", e => {
+      if (isExamMode) e.preventDefault();
+    });
+
+    // 2. บล็อกการลากเพื่อเลือกลอกข้อความ
+    document.addEventListener("selectstart", e => {
+      if (isExamMode) e.preventDefault();
+    });
+
+    // 3. บล็อก Drag & Drop
+    document.addEventListener("dragstart", e => {
+      if (isExamMode) e.preventDefault();
+    });
+
+    // 4. บล็อกแป้นพิมพ์ลัด F12, Ctrl+U (โค้ดเว็บ), Ctrl+S (เซฟ), Ctrl+P (พิมพ์), Ctrl+C/V (ก๊อปวาง)
+    document.addEventListener("keydown", e => {
+      if (!isExamMode) return;
+      
+      const key = e.key;
+      const ctrl = e.ctrlKey || e.metaKey;
+      const shift = e.shiftKey;
+      
+      // บล็อก F12
+      if (key === "F12") {
+        e.preventDefault();
+        return false;
+      }
+      
+      // บล็อก Ctrl+Shift+I / J / C (เรียก DevTools)
+      if (ctrl && shift && (key === "I" || key === "J" || key === "C" || key === "i" || key === "j" || key === "c")) {
+        e.preventDefault();
+        return false;
+      }
+      
+      // บล็อก Ctrl+S (เซฟ), Ctrl+U (ดูซอร์สโค้ด), Ctrl+P (สั่งพิมพ์)
+      if (ctrl && (key === "s" || key === "S" || key === "u" || key === "U" || key === "p" || key === "P")) {
+        e.preventDefault();
+        return false;
+      }
+      
+      // บล็อก Ctrl+C (ก๊อป), Ctrl+V (วาง), Ctrl+X (ตัด)
+      if (ctrl && (key === "c" || key === "C" || key === "v" || key === "V" || key === "x" || key === "X")) {
+        e.preventDefault();
+        return false;
+      }
+    });
+  }
+
+  let isWarningDisplayed = false;
+
+  function initAntiCheatSystem(isNative) {
+    // ลบ event การตรวจจับอันเก่าออกก่อนเพื่อป้องกันการเรียกซ้ำซ้อน
+    window.onblur = null;
+    document.onvisibilitychange = null;
+    
+    // ดักจับการสลับแท็บ หรือย่อเบราว์เซอร์ (Visibility API)
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    
+    // ดักจับ Fullscreen Exit
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+
+    // ดักจับการเปิด DevTools หรือการย่อหน้าจอเพื่อแอบดูจออื่น (Resize Detection)
+    window.onresize = handleWindowResize;
+    
+    // ตรวจจับ Focus Loss (เช่น สลับไปใช้โปรแกรมอื่น หรือเลือกจอ 2)
+    // สำหรับ Native Exam จะช่วยล็อกได้อย่างแม่นยำ 100%
+    if (isNative) {
+      window.onblur = handleWindowBlur;
+    } else {
+      // สำหรับ Iframe: หาก focus หาย ให้เช็คว่าเกิดจากการคลิกใน Iframe หรือไม่
+      window.onblur = () => {
+        setTimeout(() => {
+          const activeEl = document.activeElement;
+          const iframe = document.getElementById('exam-iframe');
+          if (activeEl && activeEl === iframe) {
+            // ถ้านักเรียนคลิกตอบข้อสอบใน iframe -> ถือว่าปกติดี ไม่แจ้งเตือน
+            console.log("Student clicked inside the exam iframe.");
+          } else {
+            // หากเป็นการหลุดโฟกัสออกไปโปรแกรมภายนอกจริงๆ
+            handleWindowBlur();
+          }
+        }, 100);
+      };
+    }
+  }
+
+  function handleVisibilityChange() {
+    if (!isExamMode) return;
+    if (document.visibilityState === 'hidden') {
+      triggerViolation("สลับแท็บ / ซ่อนบราวเซอร์ (Tab Switched)");
+    }
+  }
+
+  function handleWindowBlur() {
+    if (!isExamMode || isWarningDisplayed) return;
+    triggerViolation("หลุดโฟกัสจากหน้าต่างสอบ (Focus Lost / Second Screen Used)");
+  }
+
+  function handleFullscreenChange() {
+    if (!isExamMode) return;
+    const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!isFullscreen) {
+      triggerViolation("ยกเลิกโหมดเต็มจอ (Exited Fullscreen)");
+    }
+  }
+  
+  let resizeTimer = null;
+  function handleWindowResize() {
+    if (!isExamMode) return;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      // ตรวจสอบว่าหลังจากหลุดเต็มจอหรือหน้าต่างเล็กลงอย่างรวดเร็ว (อาจเกิดจากเปิด DevTools ข้างจอ)
+      const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+      if (!isFullscreen) {
+        // ให้ handleFullscreenChange ทำหน้าที่แทน
+        return;
+      }
+      // ถ้าหน้าจอยังเป็น Fullscreen แต่ขนาดกว้าง/สูง มีการหดลงอย่างมีนัยสำคัญ
+      triggerViolation("ย่อปรับขนาดหน้าต่างเว็บ (Browser Resized)");
+    }, 200);
+  }
+
+  // เรียกใช้เมื่อตรวจพบพฤติกรรมสลับจอ/ทุจริต
+  function triggerViolation(reason) {
+    if (!isExamMode) return;
+    violationCount++;
+    
+    // บันทึก Log การทุจริตลง Google Sheet ทันทีเพื่อเป็นหลักฐาน
+    google.script.run.logSecurityEvent(
+      userData.sid, 
+      userData.name, 
+      userData.level, 
+      currentExamCode, 
+      "VIOLATION", 
+      `ครั้งที่ ${violationCount}/${MAX_VIOLATIONS} เหตุผล: ${reason}`
+    );
+
+    if (violationCount >= MAX_VIOLATIONS) {
+      // ละเมิดกฎครบกำหนด -> ตัดสิทธิ์สอบทันที
+      isWarningDisplayed = false;
+      document.getElementById('anti-cheat-modal').style.display = 'none';
+      
+      alert(`🚨 ระบบระงับสิทธิ์การสอบของคุณทันทีเนื่องจากละเมิดระเบียบครบ ${MAX_VIOLATIONS} ครั้ง!\nระบบกำลังทำการรวบรวมคำตอบและบันทึกผลคะแนน`);
+      
+      if (questionsData && questionsData.length > 0) {
+        submitNativeExamAnswers("FORCE_LOCKED");
+      } else {
+        // สำหรับข้อสอบ iframe เก่า
+        google.script.run.logSecurityEvent(userData.sid, userData.name, userData.level, currentExamCode, "FORCE_LOCKED", "สลับหน้าต่างการสอบ (IFrame Exam)");
+        forceExitExam();
+      }
+    } else {
+      // แสดงป๊อปอัปเตือนใจผู้สอบ
+      isWarningDisplayed = true;
+      document.getElementById('cheat-count-display').innerText = violationCount;
+      document.getElementById('anti-cheat-modal').style.display = 'flex';
+      
+      // บล็อกการตอบจนกว่าผู้เรียนจะคลิกรับทราบความผิด
+    }
+  }
+
+  function resumeExamAfterWarning() {
+    isWarningDisplayed = false;
+    document.getElementById('anti-cheat-modal').style.display = 'none';
+    
+    // ดึงผู้สอบกลับไปที่ Fullscreen เสมอ
+    enterFullscreen();
+  }
+
+
+  // ==============================================
+  // ส่วนการอัปโหลดไฟล์ WORD (.DOCX) และตรวจสอบ (TEACHER PANEL)
+  // ==============================================
+
+  function handleWordFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    loading(true, "กำลังเปิดและอ่านโครงสร้างไฟล์ Word...");
+
+    reader.onload = function(loadEvent) {
+      const arrayBuffer = loadEvent.target.result;
+      
+      // ใช้ mammoth.js แปลงคำจากไฟล์ docx ออกมาเป็นข้อความดิบ
+      mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+        .then(function(result) {
+          const rawText = result.value;
+          parseDocxExamText(rawText);
+        })
+        .catch(function(err) {
+          loading(false);
+          alert("ไม่สามารถอ่านไฟล์ Word ได้: " + err.message);
+        });
+    };
+    
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ตัวแกะคำถามข้อสอบจากข้อความดิบของ Docx
+  function parseDocxExamText(text) {
+    loading(false);
+    
+    // แยกตามแต่ละบรรทัด
+    const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    
+    parsedQuestions = [];
+    let currentQuestion = null;
+
+    // รูปแบบ Regex สำหรับค้นหา โจทย์ และ ตัวเลือก
+    // ค้นหา ข้อ เช่น: 1. , 1) , ข้อ 1. , [1]
+    const questionRegex = /^(?:ข้อ\s*)?(\d+)\s*[\.\)\]\-]\s*(.+)$/i;
+    
+    // ค้นหาตัวเลือก เช่น: ก. , ข) , A. , 1.
+    const choiceRegex = /^(?:[ก-งa-d1-4A-D])\s*[\.\)\]\-]\s*(.+)$/i;
+    
+    // ค้นหาเฉลย เช่น: เฉลย: ก , คำตอบ 2 , เฉลย: 3 , Answer: B
+    const answerRegex = /^(?:เฉลย|คำตอบ|Ans|Answer|Key)\s*[\:\-\s]\s*([ก-งa-d1-4A-D]|[1-4])/i;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // ตรวจสอบว่าเป็นบรรทัดโจทย์
+      const qMatch = line.match(questionRegex);
+      if (qMatch) {
+        // หากมีข้อที่ประมวลอยู่ก่อนหน้า ให้เซฟเก็บไว้ก่อน
+        if (currentQuestion) {
+          parsedQuestions.push(currentQuestion);
+        }
+        
+        currentQuestion = {
+          no: parseInt(qMatch[1]),
+          question: qMatch[2],
+          choices: [],
+          correctAns: 1, // เริ่มต้นด้วย 1 เสมอ
+          points: 1
+        };
+        continue;
+      }
+      
+      // ตรวจสอบตัวเลือก (ต้องมีโจทย์มารองรับก่อน)
+      if (currentQuestion) {
+        const cMatch = line.match(choiceRegex);
+        if (cMatch) {
+          if (currentQuestion.choices.length < 4) {
+            currentQuestion.choices.push(cMatch[1]);
+          }
+          continue;
+        }
+        
+        // ตรวจสอบเฉลยของข้อนั้นๆ
+        const aMatch = line.match(answerRegex);
+        if (aMatch) {
+          const ansChar = aMatch[1].trim().toUpperCase();
+          let ansNum = 1;
+          
+          // แปลงอักษรภาษาไทยเป็นเลขตัวเลือก 1-4
+          if (ansChar === "ก" || ansChar === "A" || ansChar === "1") ansNum = 1;
+          else if (ansChar === "ข" || ansChar === "B" || ansChar === "2") ansNum = 2;
+          else if (ansChar === "ค" || ansChar === "C" || ansChar === "3") ansNum = 3;
+          else if (ansChar === "ง" || ansChar === "D" || ansChar === "4") ansNum = 4;
+          
+          currentQuestion.correctAns = ansNum;
+        }
+      }
+    }
+
+    // เซฟข้อสุดท้าย
+    if (currentQuestion) {
+      parsedQuestions.push(currentQuestion);
+    }
+
+    if (parsedQuestions.length === 0) {
+      alert("❌ ไม่สามารถค้นหาข้อสอบในไฟล์ Word ได้!\nกรุณาตรวจสอบว่ามีหมายเลขข้อ เช่น '1.' และตัวเลือก 'ก. ข. ค. ง.' หรือ 'A. B. C. D.' ในไฟล์อย่างชัดเจนหรือไม่");
+      document.getElementById('import-preview-section').classList.add('hidden');
+      return;
+    }
+
+    // นำรายชื่อโจทย์มาจัดเรียงเลขข้อใหม่เพื่อความชัวร์
+    parsedQuestions.forEach((q, index) => {
+      q.no = index + 1;
+    });
+
+    renderImportPreview();
+  }
+
+  // แสดงผลตาราง Preview ให้คุณครูแก้ไข
+  function renderImportPreview() {
+    const tbody = document.getElementById('import-preview-body');
+    let html = "";
+    
+    parsedQuestions.forEach((q, idx) => {
+      html += `<tr id="import-row-${idx}">
+        <td><b>${q.no}</b></td>
+        <td><textarea id="import-q-${idx}" class="input-flat" style="margin:0; min-width:180px;">${q.question}</textarea></td>
+        <td><input type="text" id="import-c1-${idx}" class="input-flat" style="margin:0; min-width:100px;" value="${q.choices[0] || ''}"></td>
+        <td><input type="text" id="import-c2-${idx}" class="input-flat" style="margin:0; min-width:100px;" value="${q.choices[1] || ''}"></td>
+        <td><input type="text" id="import-c3-${idx}" class="input-flat" style="margin:0; min-width:100px;" value="${q.choices[2] || ''}"></td>
+        <td><input type="text" id="import-c4-${idx}" class="input-flat" style="margin:0; min-width:100px;" value="${q.choices[3] || ''}"></td>
+        <td>
+          <select id="import-ans-${idx}" class="input-flat" style="margin:0; padding:6px 10px;">
+            <option value="1" ${q.correctAns === 1 ? 'selected' : ''}>1 (ก / A)</option>
+            <option value="2" ${q.correctAns === 2 ? 'selected' : ''}>2 (ข / B)</option>
+            <option value="3" ${q.correctAns === 3 ? 'selected' : ''}>3 (ค / C)</option>
+            <option value="4" ${q.correctAns === 4 ? 'selected' : ''}>4 (ง / D)</option>
+          </select>
+        </td>
+        <td><input type="number" step="0.5" id="import-pts-${idx}" class="input-flat" style="margin:0; padding:6px; text-align:center;" value="${q.points}"></td>
+        <td><button class="btn btn-danger" style="padding:6px 10px;" onclick="deleteQuestionFromPreview(${idx})"><i class="fa fa-trash"></i></button></td>
+      </tr>`;
+    });
+
+    tbody.innerHTML = html;
+    document.getElementById('import-preview-section').classList.remove('hidden');
+  }
+
+  function addQuestionToPreview() {
+    parsedQuestions.push({
+      no: parsedQuestions.length + 1,
+      question: "คำถามข้อสอบใหม่...",
+      choices: ["", "", "", ""],
+      correctAns: 1,
+      points: 1
+    });
+    renderImportPreview();
+  }
+
+  function deleteQuestionFromPreview(idx) {
+    parsedQuestions.splice(idx, 1);
+    // รีเซ็ตเลขข้อใหม่
+    parsedQuestions.forEach((q, i) => q.no = i + 1);
+    renderImportPreview();
+  }
+
+  // ส่งบันทึกคำถามทั้งหมดลง Google Sheet
+  function saveImportedQuestions() {
+    const code = document.getElementById('import-subject-code').value.trim();
+    if (!code) return alert("กรุณากรอกรหัสวิชาก่อนบันทึก เพื่อใช้ตั้งชื่อแผ่นงานข้อสอบ");
+
+    // รวบรวมข้อมูลคำถามจากตารางที่มีการแก้ไขบนเว็บ
+    const finalData = [];
+    for (let idx = 0; idx < parsedQuestions.length; idx++) {
+      const qInput = document.getElementById(`import-q-${idx}`);
+      if (!qInput) continue; // ข้ามกรณีถูกลบออกไป
+
+      const qText = qInput.value.trim();
+      const c1 = document.getElementById(`import-c1-${idx}`).value.trim();
+      const c2 = document.getElementById(`import-c2-${idx}`).value.trim();
+      const c3 = document.getElementById(`import-c3-${idx}`).value.trim();
+      const c4 = document.getElementById(`import-c4-${idx}`).value.trim();
+      const ans = document.getElementById(`import-ans-${idx}`).value;
+      const pts = document.getElementById(`import-pts-${idx}`).value || 1;
+
+      finalData.push({
+        no: finalData.length + 1,
+        question: qText,
+        choices: [c1, c2, c3, c4],
+        correctAns: parseInt(ans),
+        points: parseFloat(pts)
+      });
+    }
+
+    if (finalData.length === 0) return alert("ไม่พบข้อมูลข้อสอบที่จะบันทึก");
+
+    loading(true, "กำลังอัปโหลดและสร้างข้อสอบเข้าสารบบของโรงเรียน...");
+    google.script.run.withSuccessHandler(res => {
+      loading(false);
+      if (res.status === "success") {
+        alert(res.message);
+        
+        // ล้างฟอร์ม
+        document.getElementById('import-subject-code').value = "";
+        document.getElementById('docx-file-input').value = "";
+        document.getElementById('import-preview-section').classList.add('hidden');
+        parsedQuestions = [];
+        
+        // รีเฟรชหน้าของครู
+        fetchTeacherData();
+      } else {
+        alert("ไม่สามารถสร้างข้อสอบได้: " + res.message);
+      }
+    }).importExamQuestions(code, finalData);
+  }
+</script>
+</body>
+</html>
