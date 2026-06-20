@@ -10,6 +10,15 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- นำเข้าไลบรารี Mammoth.js สำหรับแปลงไฟล์ Word (.docx) ในบราวเซอร์ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <!-- นำเข้าไลบรารี JSZip, CFB และ XLSX -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cfb@1.2.2/dist/cfb.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- นำเข้า KaTeX สำหรับแสดงผลสูตรคณิตศาสตร์ -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
 
   <!-- นำเข้า SDK ของ Firebase Firestore (Compat Version เพื่อความง่ายในการเรียกใช้งาน) -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -457,6 +466,134 @@
       top: 0;
       z-index: 10;
     }
+
+    /* Additional custom styles */
+    .status-paper {
+      background: #f1f3f4;
+      color: #3c4043;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      font-weight: 600;
+      border: 1px solid #dadce0;
+    }
+    .status-wait {
+      font-size: 0.9em;
+      color: var(--warning);
+      font-weight: 500;
+    }
+    .status-done {
+      color: var(--success);
+      font-weight: 600;
+      font-size: 0.9em;
+    }
+    .countdown {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 0.9em;
+    }
+    /* Tab buttons style */
+    .tab-bar {
+      display: flex;
+      gap: 12px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      margin-bottom: 24px;
+    }
+    /* HUD design in Student Exam */
+    .hud-counters {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    .hud-card {
+      flex: 1;
+      background: #fafafa;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    }
+    .hud-card-title {
+      font-size: 0.8em;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+    .hud-card-value {
+      font-size: 1.25em;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .hud-card-value.unanswered {
+      color: var(--warning);
+    }
+    .progress-container {
+      background: #e8eaed;
+      border-radius: 10px;
+      height: 8px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+    .progress-bar-fill {
+      background: linear-gradient(90deg, var(--primary), #34a853);
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    /* Drop zone styling for Excel upload */
+    .dropzone {
+      border: 2px dashed var(--primary);
+      border-radius: 12px;
+      padding: 30px 20px;
+      text-align: center;
+      background: var(--primary-light);
+      color: var(--primary);
+      cursor: pointer;
+      transition: var(--transition);
+      margin-bottom: 20px;
+    }
+    .dropzone:hover {
+      background: #d2e3fc;
+      border-color: var(--primary-hover);
+    }
+    .dropzone i {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+    .preview-import-container {
+      background: white;
+      padding: 20px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      margin-top: 20px;
+    }
+    .preview-table-wrapper {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+    .preview-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .preview-table th {
+      background: #f8f9fa;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      font-size: 0.85em;
+      color: var(--text-secondary);
+      padding: 10px;
+      border-bottom: 2px solid var(--border);
+    }
+    .preview-table td {
+      padding: 10px;
+      border-bottom: 1px solid #f1f3f4;
+    }
   </style>
 </head>
 <body>
@@ -503,8 +640,28 @@
     <!-- แผงรายชื่อข้อสอบและปุ่มนำทาง -->
     <div id="exam-navigation-panel">
       <h4 style="margin: 0 0 10px 0; color: var(--text-secondary);"><i class="fa fa-list-ol"></i> ข้อสอบทั้งหมด</h4>
+      
+      <!-- Progress HUD -->
+      <div class="hud-counters">
+        <div class="hud-card">
+          <div class="hud-card-title">ตอบแล้ว</div>
+          <div class="hud-card-value" id="hud-answered-count">0</div>
+        </div>
+        <div class="hud-card">
+          <div class="hud-card-title">ยังไม่ตอบ</div>
+          <div class="hud-card-value unanswered" id="hud-unanswered-count">0</div>
+        </div>
+        <div class="hud-card">
+          <div class="hud-card-title">ทั้งหมด</div>
+          <div class="hud-card-value" id="hud-total-count">0</div>
+        </div>
+      </div>
+      <div class="progress-container">
+        <div class="progress-bar-fill" id="hud-progress-bar"></div>
+      </div>
+
       <small style="color: var(--text-secondary)">คลิกเลขข้อเพื่อข้ามไปทำข้อนั้นได้ทันที</small>
-      <div class="q-grid" id="hud-q-grid"></div>
+      class="q-grid" id="hud-q-grid"></div>
     </div>
 
     <!-- บอร์ดแสดงผลโจทย์และคำตอบแบบฟอร์ม -->
@@ -578,41 +735,17 @@
       </div>
       <button class="btn btn-out" onclick="logout()"><i class="fa fa-sign-out-alt"></i> ออกจากระบบ</button>
     </div>
-    
-    <div class="filter-section">
-      <label style="font-weight:600;"><i class="fa fa-calendar-day"></i> เลือกวันที่สอบเพื่อดูตารางเวลา:</label>
-      <input type="date" id="s-date-filter" class="input-flat" onchange="renderStudentTable()">
+    <!-- แถบเลือกสลับเมนูหลักของครู / แอดมิน -->
+    <div class="tab-bar">
+      <button class="btn btn-p" id="tab-schedules-btn" onclick="switchTeacherTab('schedules')"><i class="fa fa-calendar-alt"></i> ตารางสอบและข้อสอบ</button>
+      <button class="btn btn-out" id="tab-unlock-btn" onclick="switchTeacherTab('unlock')"><i class="fa fa-unlock-keyhole"></i> ปลดล็อกสิทธิ์ทำข้อสอบ</button>
+      <button class="btn btn-out" id="tab-personnel-btn" onclick="switchTeacherTab('personnel')"><i class="fa fa-users-gear"></i> จัดการข้อมูลผู้ใช้</button>
     </div>
 
-    <h3 style="color: var(--primary); margin-top:25px;"><i class="fa fa-calendar-check"></i> รายการสอบในวันที่เลือก</h3>
-    <div style="overflow-x:auto;">
-      <table>
-        <thead>
-          <tr>
-            <th>วันที่สอบ</th>
-            <th>เวลาสอบ</th>
-            <th>วิชา / ระยะเวลา</th>
-            <th style="text-align: right;">สถานะการเข้าทำ</th>
-          </tr>
-        </thead>
-        <tbody id="s-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- หน้าจอสำหรับครูผู้สอน / แอดมิน -->
-  <div id="teacher-page" class="card hidden">
-    <div class="header">
-      <div>
-        <b style="font-size: 1.3em;">ยินดีต้อนรับ, <span id="t-name"></span></b>
-        <span class="role-badge" id="t-role">Admin</span>
-      </div>
-      <button class="btn btn-out" onclick="logout()"><i class="fa fa-sign-out-alt"></i> ออกจากระบบ</button>
-    </div>
-    
-    <div class="filter-section" style="display: grid; grid-template-columns: 1fr 1fr; gap:15px;">
-      <div>
-        <label style="font-weight:600;">1. เลือกระดับชั้นเรียน:</label>
+    <!-- ==================== 1. แท็บตารางสอบและอัปโหลดข้อสอบ ==================== -->
+    <div id="section-schedules">
+      <div class="filter-section">
+        <label style="font-weight:600;"><i class="fa fa-chalkboard"></i> เลือกระดับชั้นเรียนเพื่อดูตารางสอบ:</label>
         <select id="t-level" class="input-flat" onchange="fetchTeacherData()">
           <option value="">-- เลือกระดับชั้น --</option>
           <option value="ม.1">ม.1</option>
@@ -623,25 +756,31 @@
           <option value="ม.6">ม.6</option>
         </select>
       </div>
-      <div>
-        <label style="font-weight:600;">2. เลือกวันที่ต้องการจัดการ:</label>
-        <input type="date" id="t-date-filter" class="input-flat" onchange="renderTeacherTable()">
-      </div>
     </div>
 
     <!-- แผงสร้างตารางจัดตารางสอบแบบใหม่บน Firebase (ครูตั้งเวลาสอบได้ตรงนี้) -->
     <div class="card" style="background: #eef2f7; border: 1px solid #d0d7de; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
-      <h4 style="margin-top:0; color:var(--primary);"><i class="fa fa-calendar-plus"></i> เพิ่มตารางจัดเวลาสอบใหม่</h4>
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 10px;">
+      <h4 style="margin-top:0; color:var(--primary);"><i class="fa fa-calendar-plus"></i> เพิ่มกำหนดการรอบสอบใหม่</h4>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px;">
         <div><small>วันที่สอบ</small><input type="date" id="new-exam-date" class="input-flat" style="margin:0;"></div>
         <div><small>เวลาสอบ (เช่น 08:30 - 10:00)</small><input type="text" id="new-exam-timerange" class="input-flat" style="margin:0;" placeholder="08:30 - 10:00"></div>
+        <div><small>เวลาเริ่มเช็คระบบ (เช่น 08:30)</small><input type="text" id="new-exam-start" class="input-flat" style="margin:0;" placeholder="08:30"></div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 10px;">
         <div><small>รหัสวิชา</small><input type="text" id="new-exam-code" class="input-flat" style="margin:0;" placeholder="MA11101"></div>
         <div><small>ชื่อวิชาสอบ</small><input type="text" id="new-exam-name" class="input-flat" style="margin:0;" placeholder="คณิตศาสตร์เพิ่ม1"></div>
-      </div>
-      <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; align-items: end;">
-        <div><small>คีย์ข้อสอบคลัง Firestore (ใส่เป็นรหัสวิชา เช่น Q_MA11101)</small><input type="text" id="new-exam-key" class="input-flat" style="margin:0;" placeholder="Q_MA11101"></div>
         <div><small>เวลาทำข้อสอบ (นาที)</small><input type="number" id="new-exam-dur" class="input-flat" style="margin:0;" value="60"></div>
-        <div><small>เวลาเริ่มสอบ (เช่น 08:30)</small><input type="text" id="new-exam-start" class="input-flat" style="margin:0;" placeholder="08:30"></div>
+        <div><small>ห้องสอบ (เช่น ม.2/1 ห้อง 326)</small><input type="text" id="new-exam-room" class="input-flat" style="margin:0;" placeholder="ม.2/1 ห้อง 326"></div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end;">
+        <div>
+          <small>รูปแบบการสอบ</small>
+          <select id="new-exam-type" class="input-flat" style="margin:0;">
+            <option value="Link">Link (สอบออนไลน์ความปลอดภัยสูง)</option>
+            <option value="Paper">Paper (สอบในกระดาษปกติ)</option>
+          </select>
+        </div>
+        <div><small>คีย์ข้อสอบคลัง Firestore (เช่น Q_MA11101)</small><input type="text" id="new-exam-key" class="input-flat" style="margin:0;" placeholder="Q_MA11101"></div>
       </div>
       <button class="btn btn-p" style="margin-top: 15px; width: 100%;" onclick="createNewExamSchedule()"><i class="fa fa-plus"></i> บันทึกตารางสอบลงคลังระบบ</button>
     </div>
@@ -688,13 +827,45 @@
                 <th style="width: 50px;">ลบ</th>
               </tr>
             </thead>
-            <tbody id="import-preview-body"></tbody>
+            id="import-preview-body"></tbody>
           </table>
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px;">
-          <button class="btn btn-out" onclick="addQuestionToPreview()"><i class="fa fa-plus"></i> เพิ่มคำถามเปล่า</button>
-          <button class="btn btn-success" onclick="saveImportedQuestions()"><i class="fa fa-cloud-upload-alt"></i> บันทึกข้อสอบเข้าคลัง Firebase</button>
+        <!-- บล็อกแสดงสูตรคณิตศาสตร์เรนเดอร์ KaTeX -->
+          <div id="import-math-preview-box" style="margin-top: 15px; padding: 15px; background: #fafafa; border: 1px solid var(--border); border-radius: 8px; display: none;">
+            <h5 style="margin-top: 0; color: var(--primary);"><i class="fa fa-eye"></i> พรีวิวข้อสอบแบบเรนเดอร์สูตรสมการคณิตศาสตร์ (KaTeX)</h5>
+            <div id="import-math-preview-content" style="max-height: 250px; overflow-y: auto; font-size: 0.95em; line-height: 1.6;"></div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px;">
+            <div>
+              <button class="btn btn-out" onclick="addQuestionToPreview()"><i class="fa fa-plus"></i> เพิ่มคำถามเปล่า</button>
+              <button class="btn btn-out" style="border-color: var(--primary); color: var(--primary);" onclick="toggleMathPreview()"><i class="fa fa-eye"></i> แสดงพรีวิวสูตรคณิตศาสตร์</button>
+            </div>
+            <button class="btn btn-success" onclick="saveImportedQuestions()"><i class="fa fa-cloud-upload-alt"></i> บันทึกข้อสอบเข้าคลัง Firebase</button>
+          </div>
         </div>
+      </div>
+    </div> <!-- ปิด section-schedules -->
+
+    <!-- ==================== 2. แท็บศูนย์ปลดล็อกสิทธิ์สอบนักเรียน ==================== -->
+    <div id="section-unlock" class="hidden">
+      <div class="admin-box card" style="background: #f1f8e9; border: 1px dashed var(--success); margin: 0 0 24px 0;">
+        <h3 style="margin-top: 0; color: var(--success);"><i class="fa fa-unlock-keyhole"></i> ค้นหาเพื่อปลดล็อกรายวิชาให้นักเรียนด้วยตนเอง</h3>
+        <p style="font-size: 0.9em; color: var(--text-secondary);">กรณีฉุกเฉินต้องการล้างสถานะสอบวิชาเฉพาะเครื่อง</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end;">
+          <div><small style="font-weight:600;">รหัสนักเรียน</small><input type="text" id="u-sid" class="input-flat" placeholder="เช่น 651001"></div>
+          <div><small style="font-weight:600;">รหัสวิชา</small><input type="text" id="u-code" class="input-flat" placeholder="เช่น MA11101"></div>
+          <button class="btn btn-success" onclick="doUnlock()"><i class="fa fa-key"></i> ปลดล็อกข้อสอบ</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="color: var(--primary); margin-top:0; display:flex; justify-content:space-between; align-items:center;">
+          <span><i class="fa fa-wifi"></i> รายชื่อเครื่องนักเรียนที่ถูกล็อกขณะสอบ (เรียลไทม์)</span>
+          <span style="font-size:0.7em; background:var(--danger-light); color:var(--danger); border:1px solid #f5c6cb; padding:2px 8px; border-radius:10px;"><i class="fa fa-sync fa-spin"></i> ระบบตรวจจับอยู่</span>
+        </h3>
+        <p style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 15px;">เมื่อนักเรียนเริ่มเข้าทำข้อสอบ รายชื่อจะปรากฏที่นี่ และหากกดยกเลิกโหมดเต็มจอ/สลับแท็บจนถูกล็อก หรือต้องการเข้าสอบใหม่เนื่องจากเครื่องมีปัญหา ครูสามารถกดปลดล็อกได้ทันที</p>
+        <div id="realtime-locked-students-list" style="overflow-x:auto;"></div>
       </div>
     </div>
     
@@ -712,7 +883,9 @@
     <!-- ==============================================
          ระบบจัดการบุคลากร (ครูและนักเรียน) - Admin Only
          ============================================== -->
-    <div id="personnel-management-area" class="card hidden" style="margin-top: 30px; border: 1.5px solid var(--border); padding: 25px; border-radius: 16px;">
+    <!-- ==================== 3. แท็บจัดการข้อมูลบัญชีผู้ใช้ ==================== -->
+    <div id="section-personnel" class="hidden">
+      <div id="personnel-management-area" class="card" style="border: 1.5px solid var(--border); padding: 25px; border-radius: 16px;">
       <h3 style="margin-top:0; color: var(--primary);"><i class="fa fa-users-gear"></i> ระบบจัดการบุคลากร (ครู / นักเรียน)</h3>
       <p style="font-size: 0.9em; color: var(--text-secondary);">จัดการบัญชีผู้ใช้งานครูผู้สอนและนักเรียนภายในโรงเรียน</p>
       
@@ -744,7 +917,48 @@
       </div>
 
       <!-- ส่วนจัดการนักเรียน -->
+      <div <!-- ส่วนจัดการนักเรียน (มีเพิ่ม Excel Importer) -->
       <div id="subtab-students" class="hidden">
+        <!-- แผงนำเข้า Excel Roster Importer -->
+        <div class="card" style="background: #fdfefe; border: 1.5px dashed var(--primary); padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+          <h4 style="margin-top: 0; color: var(--primary);"><i class="fa fa-file-excel"></i> นำเข้ารายชื่อนักเรียนแบบกลุ่มจากไฟล์ Excel</h4>
+          <p style="font-size: 0.85em; color: var(--text-secondary);">
+            รองรับทั้งแบบแยกห้องแยกชีต (ชีตชื่อ "1-1 (ID)" ถึง "6-3 (ID)" คอลัมน์ No, Student ID, Citizen ID, Name) และแบบชีตรวมยาว (มีบรรทัดหัวห้องและท้ายห้องบอกสรุปจำนวนคน เช่น "ห้องที่ 1 รวม 33 คน")
+          </p>
+          
+          <div id="excel-dropzone" class="dropzone" onclick="document.getElementById('excel-file-input').click()">
+            <i class="fa fa-cloud-upload-alt"></i>
+            <p style="margin: 10px 0 0 0; font-weight: 600;">ลากไฟล์ Excel (.xls, .xlsx) มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</p>
+            <small style="color: var(--text-secondary)">คอลัมน์ระบบจะค้นหาอัตโนมัติ (รหัสนักเรียน 5 หลัก, รหัสประชาชน 13 หลัก, และชื่อ-นามสกุล)</small>
+            <input type="file" id="excel-file-input" accept=".xls,.xlsx" style="display:none" onchange="handleExcelFileUpload(event)">
+          </div>
+
+          <div id="excel-preview-section" class="preview-import-container hidden">
+            <h4 style="margin-top:0; color: var(--success); display:flex; justify-content:space-between; align-items:center;">
+              <span><i class="fa fa-clipboard-check"></i> รายชื่อนักเรียนที่จะนำเข้า (<span id="excel-student-count">0</span> คน)</span>
+              <span style="font-size:0.8em; color:var(--text-secondary)">โปรดตรวจสอบความถูกต้องก่อนกดบันทึกลงฐานข้อมูล</span>
+            </h4>
+            <div class="preview-table-wrapper">
+              <table class="preview-table" style="margin:0;">
+                <thead>
+                  <tr style="background:#f8f9fa;">
+                    <th>ระดับชั้น</th>
+                    <th>ห้อง</th>
+                    <th>เลขที่</th>
+                    <th>รหัสนักเรียน</th>
+                    <th>รหัสประชาชน (ใช้เป็นรหัสผ่าน)</th>
+                    <th>ชื่อ-นามสกุล</th>
+                  </tr>
+                </thead>
+                <tbody id="excel-preview-body"></tbody>
+              </table>
+            </div>
+            <div style="display:flex; justify-content:flex-end; margin-top:15px;">
+              <button class="btn btn-success" onclick="saveImportedStudents()"><i class="fa fa-cloud-upload-alt"></i> ยืนยันบันทึกรายชื่อลง Firebase</button>
+            </div>
+          </div>
+        </div>
+
         <h4 style="margin-top:0; color: var(--primary);">เพิ่มบัญชีนักเรียนใหม่</h4>
         <div style="display: grid; grid-template-columns: 1fr 1.5fr 1fr 0.8fr 0.8fr 0.8fr auto; gap: 10px; align-items: end; margin-bottom: 20px;">
           <div><small style="font-weight:600;">รหัสนักเรียน</small><input type="text" id="new-s-user" class="input-flat" style="margin:0;" placeholder="651001"></div>
@@ -769,10 +983,11 @@
             <option>ม.1</option><option>ม.2</option><option>ม.3</option><option>ม.4</option><option>ม.5</option><option>ม.6</option>
           </select>
         </div>
-        <div id="students-table-area" style="overflow-x:auto;"></div>
+        <div         <div id="students-table-area" style="overflow-x:auto;"></div>
       </div>
     </div>
   </div>
+  </div> <!-- ปิด section-personnel -->
 </div>
 
 <script>
@@ -796,18 +1011,15 @@
     db = firebase.firestore();
     ensureDefaultAdmin();
   } catch (err) {
-    alert("❌ ไม่สามารถเชื่อมต่อ Firebase ได้! โปรดกรอกข้อมูลตั้งค่าเชื่อมต่อที่ส่วนบนของไฟล์ index.html สคริปต์บรรทัดที่ 700");
+    alert("❌ ไม่สามารถเชื่อมต่อ Firebase ได้! โปรดกรอกข้อมูลตั้งค่าเชื่อมต่อที่ส่วนบนของไฟล์ index.html สคริปต์บรรทัดที่ 780");
   }
 
-  // ==============================================
-  // ตัวแปรการทำงานภายในแอปพลิเคชัน
-  // ==============================================
   let userData = null;
-  let rawExamData = null; 
+  let rawExamData = null;
   let timerIntervals = [];
-  let isExamMode = false;
-  let cheatDetected = false; 
 
+  // ตัวแปรสำหรับทำข้อสอบ
+  let isExamMode = false;
   let currentExamCode = "";
   let currentExamKey = "";
   let currentExamName = "";
@@ -816,17 +1028,50 @@
   let activeQuestionIndex = 0;
   let examTimeLeftSeconds = 0;
   let examTimerInterval = null;
-
   let violationCount = 0;
-  const MAX_VIOLATIONS = 2;
+
+  // ตัวแปรสำหรับนำเข้า
   let parsedQuestions = [];
+  let parsedStudents = [];
+  let targetImportExamKey = "";
+  let unlockListener = null;
 
   window.onload = () => {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('s-date-filter').value = today;
-    document.getElementById('t-date-filter').value = today;
     initKeyboardSecurity();
+    
+    // ตั้งค่า drag & drop สำหรับ Excel
+    const dropzone = document.getElementById('excel-dropzone');
+    if (dropzone) {
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, e => {
+          e.preventDefault();
+          e.stopPropagation();
+        }, false);
+      });
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, () => dropzone.style.background = '#d2e3fc', false);
+      });
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, () => dropzone.style.background = 'var(--primary-light)', false);
+      });
+      dropzone.addEventListener('drop', handleExcelFileUpload, false);
+    }
   };
+
+  function getThaiDayAndMonth(dateString) {
+    const date = new Date(dateString);
+    const thaiDays = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+    const thaiMonths = [
+      "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+      "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+    ];
+    return {
+      dayName: "วัน" + thaiDays[date.getDay()],
+      dateNum: date.getDate(),
+      monthName: thaiMonths[date.getMonth()],
+      yearTh: date.getFullYear() + 543
+    };
+  }
 
   function loading(show, text = "กำลังดำเนินการ...") { 
     document.getElementById('loader-text').innerText = text;
@@ -835,12 +1080,16 @@
 
   function logout() {
     userData = null;
+    if (unlockListener) {
+      unlockListener();
+      unlockListener = null;
+    }
     document.getElementById('student-page').classList.add('hidden');
     document.getElementById('teacher-page').classList.add('hidden');
     document.getElementById('login-page').classList.remove('hidden');
   }
 
-  // ล็อกอินนักเรียนหรือครูผ่านข้อมูลในคอลเลกชันของ Firebase
+  // ล็อกอินนักเรียนหรือครู
   async function doLogin() {
     const u = document.getElementById('user').value.trim();
     const p = document.getElementById('pass').value.trim();
@@ -848,7 +1097,7 @@
     
     loading(true, "กำลังยืนยันตัวตน...");
     try {
-      // 1. ตรวจสอบบัญชีผู้สอนในคอลเลกชัน "users_teachers"
+      // 1. ตรวจสอบบัญชีผู้สอน
       const teacherDoc = await db.collection("users_teachers").doc(u).get();
       if (teacherDoc.exists) {
         const tData = teacherDoc.data();
@@ -864,19 +1113,21 @@
           document.getElementById('teacher-page').classList.remove('hidden');
           document.getElementById('t-name').innerText = userData.name;
           document.getElementById('t-role').innerText = userData.displayRole;
+          
           if(userData.isAdmin) {
-            document.getElementById('admin-area').classList.remove('hidden');
-            document.getElementById('personnel-management-area').classList.remove('hidden');
-            fetchTeachersList();
+            document.getElementById('tab-unlock-btn').classList.remove('hidden');
+            document.getElementById('tab-personnel-btn').classList.remove('hidden');
           } else {
-            document.getElementById('admin-area').classList.add('hidden');
-            document.getElementById('personnel-management-area').classList.add('hidden');
+            document.getElementById('tab-unlock-btn').classList.add('hidden');
+            document.getElementById('tab-personnel-btn').classList.add('hidden');
           }
+          
+          switchTeacherTab('schedules');
           return;
         }
       }
 
-      // 2. ตรวจสอบบัญชีนักเรียนในคอลเลกชัน "students"
+      // 2. ตรวจสอบบัญชีนักเรียน
       const studentDoc = await db.collection("students").doc(u).get();
       if (studentDoc.exists) {
         const sData = studentDoc.data();
@@ -911,18 +1162,15 @@
     }
   }
 
-  // ดึงข้อมูลตารางเวลาสอบจากคลังกำหนดการใน Firebase
+  // ดึงข้อมูลตารางเวลาสอบของนักเรียน
   async function fetchStudentData() {
     loading(true, "กำลังโหลดข้อมูลปฏิทินสอบ...");
     try {
       const studentId = userData.sid;
-      
-      // ดึงรายชื่อสอบที่เสร็จสิ้นแล้ว
       const studentDoc = await db.collection("students").doc(studentId).get();
       const finishedExams = studentDoc.data().finishedExams || [];
       const activeExam = studentDoc.data().activeExam || "";
       
-      // ดึงข้อมูลตารางสอบของระดับชั้นนักเรียน
       const examsSnapshot = await db.collection("exams")
         .where("level", "==", userData.level)
         .get();
@@ -944,62 +1192,78 @@
   function renderStudentTable() {
     timerIntervals.forEach(clearInterval); 
     timerIntervals = [];
-    const selectedDate = document.getElementById('s-date-filter').value;
     if(!rawExamData) return;
 
-    let html = "";
     const now = new Date();
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0') + "-" + String(now.getDate()).padStart(2, '0');
 
-    // กรองวิชาสอบตามวันที่ผู้เรียนเลือก
-    const filteredExams = rawExamData.exams.filter(ex => ex.isoDate === selectedDate);
+    // เรียงตามวันที่และเวลา
+    const sortedExams = [...rawExamData.exams].sort((a, b) => {
+      if (a.isoDate !== b.isoDate) return a.isoDate.localeCompare(b.isoDate);
+      return a.startTimeG.localeCompare(b.startTimeG);
+    });
 
-    filteredExams.forEach((ex, i) => {
+    // นับจำนวนแถวในแต่ละวันเพื่อใช้ rowspan
+    const dateCounts = {};
+    sortedExams.forEach(ex => {
+      dateCounts[ex.isoDate] = (dateCounts[ex.isoDate] || 0) + 1;
+    });
+
+    const dateRendered = {};
+    let html = "";
+
+    sortedExams.forEach((ex, idx) => {
       const isFinished = rawExamData.finished.includes(ex.subjectCode);
       const examDate = ex.isoDate;
       const targetDateTime = new Date(examDate + 'T' + ex.startTimeG).getTime();
 
       let statusCol = "";
-      if (isFinished) {
-        statusCol = '<span class="status-done" style="color:var(--success); font-weight:600;"><i class="fa fa-check-circle"></i> สอบเสร็จแล้ว</span>';
-      } else if (examDate > todayStr) {
-        statusCol = `<div class="status-wait" style="color:var(--primary);"><i class="fa fa-calendar-days"></i> ยังไม่ถึงวันสอบ</div>`;
-      } else if (examDate < todayStr) {
-        statusCol = `<div class="status-wait" style="color:var(--danger);"><i class="fa fa-times-circle"></i> หมดเวลาสอบแล้ว</div>`;
+      if (ex.examType === "Paper") {
+        statusCol = `<span class="status-paper"><i class="fa fa-pen-ruler"></i> สอบกระดาษ (Paper)</span>`;
       } else {
-        if (now.getTime() < targetDateTime) {
-          statusCol = `<div class="status-wait" style="font-weight: 500;">รอเวลาเริ่มสอบ<span id="timer-${i}" class="countdown"></span></div>`;
-          runCountdown(ex, i);
+        if (isFinished) {
+          statusCol = '<span class="status-done"><i class="fa fa-check-circle"></i> สอบเสร็จแล้ว</span>';
+        } else if (examDate > todayStr) {
+          statusCol = `<div class="status-wait"><i class="fa fa-clock"></i> ยังไม่ถึงวันสอบ</div>`;
+        } else if (examDate < todayStr) {
+          statusCol = `<div class="status-wait" style="color:var(--danger);"><i class="fa fa-times-circle"></i> หมดเวลาสอบแล้ว</div>`;
         } else {
-          // หากไม่มีประวัติล็อกเอาท์ซ้ำ หรือกำลังเข้าทำวิชานั้นค้างอยู่
-          if (rawExamData.activeExam === "" || rawExamData.activeExam === ex.subjectCode) {
-            statusCol = `<button class="btn btn-p" onclick="confirmOpenExam('${ex.examKey}', '${ex.subjectCode}', '${ex.subjectName}', ${ex.duration})"><i class="fa fa-play"></i> เริ่มสอบ</button>`;
+          if (now.getTime() < targetDateTime) {
+            statusCol = `<div class="status-wait">รอเวลาเริ่มสอบ<span id="timer-${idx}" class="countdown" style="margin-left:5px; color:var(--warning);"></span></div>`;
+            runCountdown(ex, idx);
           } else {
-            statusCol = `<span class="status-done" style="color:var(--danger); font-weight:600;"><i class="fa fa-lock"></i> ล็อกเนื่องจากเปิดวิชาอื่น</span>`;
+            if (rawExamData.activeExam === "" || rawExamData.activeExam === ex.subjectCode) {
+              statusCol = `<button class="btn btn-p" onclick="confirmOpenExam('${ex.examKey}', '${ex.subjectCode}', '${ex.subjectName}', ${ex.duration})"><i class="fa fa-play"></i> เริ่มสอบ</button>`;
+            } else {
+              statusCol = `<span class="status-done" style="color:var(--danger);"><i class="fa fa-lock"></i> ล็อกเนื่องจากเปิดวิชาอื่น</span>`;
+            }
           }
         }
       }
       
-      // แปลงวันที่จัดระเบียบใหม่แสดงสวยงาม
-      let displayDate = ex.date;
-      if (!displayDate) {
-        const dObj = new Date(ex.isoDate);
-        displayDate = `${dObj.getDate()} / ${dObj.getMonth()+1} / ${dObj.getFullYear()+543}`;
+      const thaiDate = getThaiDayAndMonth(ex.isoDate);
+      const displayDate = `<div style="font-weight:700; color:var(--text);">${thaiDate.dayName}</div>
+                           <div style="font-size:1.1em; font-weight:800; color:var(--primary); margin:4px 0;">${thaiDate.dateNum}</div>
+                           <div style="font-size:0.8em; color:var(--text-secondary);">${thaiDate.monthName} ${thaiDate.yearTh}</div>`;
+
+      html += `<tr>`;
+      if (!dateRendered[ex.isoDate]) {
+        const rowSpanCount = dateCounts[ex.isoDate];
+        html += `<td rowspan="${rowSpanCount}" style="vertical-align: middle; text-align: center; border-right: 1px solid #f1f3f4; background: #fafafa; padding: 15px; width: 120px;">${displayDate}</td>`;
+        dateRendered[ex.isoDate] = true;
       }
 
-      html += `<tr>
-        <td><b>${displayDate}</b></td>
-        <td>${ex.timeRange}</td>
-        <td>
-          <b style="color:var(--primary);">${ex.subjectCode}</b><br>
-          <small style="color:var(--text-secondary);">${ex.subjectName} (${ex.duration} นาที)</small>
-          <span style="font-size:0.7em; background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9; padding:1px 5px; border-radius:4px; margin-left:5px;">คลัง Firestore</span>
-        </td>
+      html += `
+        <td><b style="font-family:'Outfit';">${ex.timeRange} น.</b></td>
+        <td style="text-align:center;">${ex.duration}</td>
+        <td><b style="color:var(--primary);">${ex.subjectCode}</b></td>
+        <td><div style="font-weight:600;">${ex.subjectName}</div></td>
+        <td><span style="font-size:0.9em; background:#f1f3f4; color:var(--text-secondary); padding:4px 8px; border-radius:4px; font-weight:500;">${ex.room || '-'}</span></td>
         <td style="text-align: right;">${statusCol}</td>
       </tr>`;
     });
     
-    document.getElementById('s-body').innerHTML = html || "<tr><td colspan='4' style='text-align:center; padding: 30px; color: var(--text-secondary);'>ไม่มีข้อมูลการสอบในวันที่เลือก</td></tr>";
+    document.getElementById('s-body').innerHTML = html || "<tr><td colspan='7' style='text-align:center; padding: 30px; color: var(--text-secondary);'>ไม่มีข้อมูลการสอบของระดับชั้นเรียนนี้</td></tr>";
   }
 
   function runCountdown(ex, idx) {
@@ -1024,11 +1288,11 @@
     timerIntervals.push(timer);
   }
 
-  // ดึงคลังวิชาสอบทั้งหมดของครูผู้สอน
+  // ดึงคลังวิชาสอบของครู
   async function fetchTeacherData() {
     const lv = document.getElementById('t-level').value;
     if(!lv) return;
-    loading(true, "กำลังโหลดวิชาสอบ...");
+    loading(true, "กำลังโหลดวิชาสอบและข้อมูลคลังข้อสอบ...");
     try {
       const examsSnapshot = await db.collection("exams")
         .where("level", "==", lv)
@@ -1039,7 +1303,14 @@
         exams.push({ id: doc.id, ...doc.data() });
       });
 
-      rawExamData = { exams };
+      const questionsSnapshot = await db.collection("questions").get();
+      const availableQuestions = {};
+      questionsSnapshot.forEach(doc => {
+        const qData = doc.data();
+        availableQuestions[doc.id] = qData.questions ? qData.questions.length : 0;
+      });
+
+      rawExamData = { exams, availableQuestions };
       loading(false);
       renderTeacherTable();
     } catch (e) {
@@ -1049,42 +1320,120 @@
   }
 
   function renderTeacherTable() {
-    const selectedDate = document.getElementById('t-date-filter').value;
     if(!rawExamData) return;
 
-    const filteredExams = rawExamData.exams.filter(ex => ex.isoDate === selectedDate);
-    
-    let html = `<table><thead><tr><th>เวลาสอบ</th><th>รหัสวิชา</th><th>ชื่อวิชา</th><th>คลังข้อสอบ Firestore</th><th style="width:80px; text-align:center;">จัดการ</th></tr></thead><tbody>`;
-    filteredExams.forEach(ex => {
-      html += `<tr>
-        <td style="font-size:0.9em; color:var(--text-secondary);">${ex.timeRange}</td>
+    const sortedExams = [...rawExamData.exams].sort((a, b) => {
+      if (a.isoDate !== b.isoDate) return a.isoDate.localeCompare(b.isoDate);
+      return a.startTimeG.localeCompare(b.startTimeG);
+    });
+
+    const dateCounts = {};
+    sortedExams.forEach(ex => {
+      dateCounts[ex.isoDate] = (dateCounts[ex.isoDate] || 0) + 1;
+    });
+
+    const dateRendered = {};
+    const availQs = rawExamData.availableQuestions || {};
+
+    let html = `<table>
+      <thead>
+        <tr>
+          <th>วันที่สอบ</th>
+          <th>เวลาสอบ</th>
+          <th style="text-align:center;">รวม (นาที)</th>
+          <th>รหัสวิชา</th>
+          <th>ชื่อวิชา</th>
+          <th>ห้องสอบ</th>
+          <th>รูปแบบ</th>
+          <th>ข้อสอบ Word</th>
+          <th style="width:130px; text-align:center;">จัดการ</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    sortedExams.forEach((ex, idx) => {
+      const thaiDate = getThaiDayAndMonth(ex.isoDate);
+      const displayDate = `<div style="font-weight:700; color:var(--text);">${thaiDate.dayName}</div>
+                           <div style="font-size:1.1em; font-weight:800; color:var(--primary); margin:4px 0;">${thaiDate.dateNum}</div>
+                           <div style="font-size:0.8em; color:var(--text-secondary);">${thaiDate.monthName} ${thaiDate.yearTh}</div>`;
+
+      const qCount = availQs[ex.examKey] || 0;
+      let qStatusCol = "";
+      
+      if (ex.examType === "Paper") {
+        qStatusCol = `<span style="font-size:0.85em; color:var(--text-secondary); font-weight:500;"><i class="fa fa-pen-ruler"></i> สอบกระดาษ</span>`;
+      } else {
+        if (qCount > 0) {
+          qStatusCol = `<div style="display:flex; flex-direction:column; gap:4px;">
+            <span class="role-badge" style="background:var(--success-light); color:var(--success); border-color:#c3e6cb; margin:0; display:inline-block; font-size:0.8em; font-weight:600;"><i class="fa fa-check-circle"></i> มีข้อสอบแล้ว (${qCount} ข้อ)</span>
+            <button class="btn btn-out" style="padding:4px 8px; font-size:0.75em; align-self:start;" onclick="openWordUploadFor('${ex.subjectCode}', '${ex.examKey}')"><i class="fa fa-redo"></i> อัปโหลดใหม่</button>
+          </div>`;
+        } else {
+          qStatusCol = `<div style="display:flex; flex-direction:column; gap:4px;">
+            <span class="role-badge" style="background:var(--danger-light); color:var(--danger); border-color:#f5c6cb; margin:0; display:inline-block; font-size:0.8em; font-weight:600;"><i class="fa fa-circle-exclamation"></i> ยังไม่มีข้อสอบ</span>
+            <button class="btn btn-p" style="padding:4px 8px; font-size:0.75em; align-self:start;" onclick="openWordUploadFor('${ex.subjectCode}', '${ex.examKey}')"><i class="fa fa-upload"></i> อัปโหลด Word</button>
+          </div>`;
+        }
+      }
+
+      html += `<tr>`;
+      if (!dateRendered[ex.isoDate]) {
+        const rowSpanCount = dateCounts[ex.isoDate];
+        html += `<td rowspan="${rowSpanCount}" style="vertical-align: middle; text-align: center; border-right: 1px solid #f1f3f4; background: #fafafa; padding: 15px; width: 120px;">${displayDate}</td>`;
+        dateRendered[ex.isoDate] = true;
+      }
+
+      const typeBadge = ex.examType === "Paper" ? 
+        `<span style="background:#e8eaed; color:#3c4043; border:1px solid #dadce0; padding:2px 6px; border-radius:4px; font-size:0.8em; font-weight:600;">Paper</span>` : 
+        `<span style="background:var(--primary-light); color:var(--primary); border:1px solid #c2e7ff; padding:2px 6px; border-radius:4px; font-size:0.8em; font-weight:600;">Link</span>`;
+
+      html += `
+        <td><b style="font-family:'Outfit';">${ex.timeRange} น.</b></td>
+        <td style="text-align:center;">${ex.duration}</td>
         <td><b>${ex.subjectCode}</b></td>
-        <td>${ex.subjectName} (${ex.duration} นาที)</td>
-        <td>
-          <input type="text" id="link-${ex.id}" class="input-flat" value="${ex.examKey}" style="margin:0; font-size:0.9em;">
-        </td>
-        <td style="text-align:center; display:flex; gap:5px; justify-content:center;">
-          <button class="btn btn-p" style="padding: 8px 14px;" title="บันทึกเปลี่ยนรหัสวิชาคลัง" onclick="updateExamKey('${ex.id}')"><i class="fa fa-save"></i></button>
-          <button class="btn btn-danger" style="padding: 8px 14px; background:var(--danger-light); color:var(--danger);" title="ลบตารางเวลานี้" onclick="deleteExamSchedule('${ex.id}')"><i class="fa fa-trash"></i></button>
+        <td><div style="font-weight:600;">${ex.subjectName}</div></td>
+        <td><span style="font-size:0.9em; background:#f1f3f4; color:var(--text-secondary); padding:4px 8px; border-radius:4px; font-weight:500;">${ex.room || '-'}</span></td>
+        <td>${typeBadge}</td>
+        <td>${qStatusCol}</td>
+        <td style="text-align:center;">
+          <div style="display:flex; gap:6px; justify-content:center;">
+            <button class="btn btn-out" style="padding: 6px 10px; border-color:var(--border);" title="แก้ไขรหัสวิชาคลัง" onclick="editExamKeyDirectly('${ex.id}', '${ex.examKey}')"><i class="fa fa-edit"></i></button>
+            <button class="btn btn-danger" style="padding: 6px 10px; background:var(--danger-light); color:var(--danger);" title="ลบตารางเวลานี้" onclick="deleteExamSchedule('${ex.id}')"><i class="fa fa-trash"></i></button>
+          </div>
         </td>
       </tr>`;
     });
     
-    document.getElementById('t-table-area').innerHTML = (filteredExams.length > 0) ? 
+    document.getElementById('t-table-area').innerHTML = (sortedExams.length > 0) ? 
       (html + "</tbody></table>") : 
-      "<div style='text-align:center; padding:30px; color:var(--text-secondary);'><i class='fa fa-circle-exclamation' style='font-size:2em; margin-bottom:10px; display:block;'></i>ไม่มีข้อมูลการสอบในวันที่เลือก</div>";
+      "<div style='text-align:center; padding:30px; color:var(--text-secondary);'><i class='fa fa-circle-exclamation' style='font-size:2em; margin-bottom:10px; display:block;'></i>ไม่มีข้อมูลกำหนดเวลาการสอบ</div>";
   }
 
-  // ครูแก้ไขกุญแจคีย์ดึงคำถามวิชา
-  async function updateExamKey(docId) {
-    const newKey = document.getElementById('link-'+docId).value.trim();
+  function openWordUploadFor(subjectCode, examKey) {
+    document.getElementById('import-subject-code').value = subjectCode;
+    targetImportExamKey = examKey;
+    
+    const docxArea = document.getElementById('docx-import-area');
+    docxArea.scrollIntoView({ behavior: 'smooth' });
+    docxArea.style.borderColor = "var(--success)";
+    setTimeout(() => {
+      docxArea.style.borderColor = "var(--primary)";
+    }, 1000);
+  }
+
+  async function editExamKeyDirectly(docId, currentKey) {
+    const newKey = prompt("ระบุคีย์ข้อสอบคลัง Firestore ใหม่ สำหรับวิชานี้:", currentKey);
+    if (newKey === null) return;
+    const keyVal = newKey.trim();
+    if (!keyVal) return alert("คีย์ข้อสอบไม่สามารถเป็นค่าว่างได้");
+    
     loading(true, "กำลังอัปเดตตารางเวลา...");
     try {
-      await db.collection("exams").doc(docId).update({ examKey: newKey });
+      await db.collection("exams").doc(docId).update({ examKey: keyVal });
       loading(false);
-      alert("แก้ไขตารางข้อสอบวิชาเรียบร้อย");
+      alert("แก้ไขคีย์คลังข้อสอบเรียบร้อย");
       fetchTeacherData();
-    } catch(e) {
+    } catch (e) {
       loading(false);
       alert("เกิดข้อผิดพลาด: " + e.message);
     }
@@ -1117,8 +1466,10 @@
     const examKey = document.getElementById('new-exam-key').value.trim() || ("Q_" + sCode);
     const duration = parseInt(document.getElementById('new-exam-dur').value) || 60;
     const startG = document.getElementById('new-exam-start').value.trim();
+    const roomVal = document.getElementById('new-exam-room').value.trim();
+    const examTypeVal = document.getElementById('new-exam-type').value;
 
-    if(!dateVal || !timeRange || !sCode || !sName || !startG) {
+    if(!dateVal || !timeRange || !sCode || !sName || !startG || !roomVal) {
       return alert("กรุณากรอกข้อมูลกำหนดการสอบให้ครบทุกฟิลด์");
     }
 
@@ -1132,7 +1483,9 @@
         subjectName: sName,
         examKey: examKey,
         duration: duration,
-        startTimeG: startG
+        startTimeG: startG,
+        room: roomVal,
+        examType: examTypeVal
       });
       
       loading(false);
@@ -1145,6 +1498,7 @@
       document.getElementById('new-exam-key').value = "";
       document.getElementById('new-exam-dur').value = "60";
       document.getElementById('new-exam-start').value = "";
+      document.getElementById('new-exam-room').value = "";
       
       fetchTeacherData();
     } catch(e) {
@@ -1153,7 +1507,7 @@
     }
   }
 
-  // ปลดล็อกนักเรียนที่ติดระบบล็อกเอ้าต์ให้มีสิทธิ์สอบใหม่
+  // ปลดล็อกนักเรียนที่ติดระบบล็อกเอ้าต์
   async function doUnlock() {
     const sid = document.getElementById('u-sid').value.trim();
     const code = document.getElementById('u-code').value.trim();
@@ -1167,7 +1521,6 @@
         return alert("ไม่พบข้อมูลนักเรียนคนนี้ในระบบ");
       }
       
-      // ลบรหัสวิชาออกจากประวัติสอบเสร็จ (Finished) และล้าง ActiveExam
       await db.collection("students").doc(sid).update({
         finishedExams: firebase.firestore.FieldValue.arrayRemove(code),
         activeExam: ""
@@ -1183,8 +1536,109 @@
     }
   }
 
+  // Real-time Unlock list logic
+  function initRealtimeUnlockList() {
+    if (unlockListener) unlockListener(); // unsubscribe
+    
+    const container = document.getElementById('realtime-locked-students-list');
+    if (!container) return;
+    
+    container.innerHTML = `<p style="color: var(--text-secondary);"><i class="fa fa-spinner fa-spin"></i> กำลังโหลดข้อมูลเรียลไทม์...</p>`;
+    
+    unlockListener = db.collection("students")
+      .where("activeExam", "!=", "")
+      .onSnapshot(snapshot => {
+        if (snapshot.empty) {
+          container.innerHTML = `<div style="text-align:center; padding: 30px; color: var(--text-secondary);"><i class="fa fa-check-circle" style="font-size:2.2em; color:var(--success); margin-bottom:10px; display:block;"></i>ไม่มีเครื่องนักเรียนถูกล็อกในขณะนี้</div>`;
+          return;
+        }
+        
+        let html = `<table>
+          <thead>
+            <tr>
+              <th>รหัสนักเรียน</th>
+              <th>ชื่อ-นามสกุล</th>
+              <th>ชั้น / ห้อง / เลขที่</th>
+              <th>วิชาที่กำลังทำสอบ</th>
+              <th style="text-align:center; width:150px;">การจัดการ</th>
+            </tr>
+          </thead>
+          <tbody>`;
+        
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const sid = doc.id;
+          html += `<tr>
+            <td><b>${sid}</b></td>
+            <td>${data.name}</td>
+            <td>ม.${data.level.replace("ม.", "")}/${data.room} เลขที่ ${data.no}</td>
+            <td><span class="role-badge" style="background:var(--danger-light); color:var(--danger); border-color:#f5c6cb;">${data.activeExam}</span></td>
+            <td style="text-align:center;">
+              <button class="btn btn-success" style="padding:6px 12px; font-size:0.85em;" onclick="quickUnlockStudent('${sid}', '${data.activeExam}')"><i class="fa fa-unlock"></i> ปลดล็อก</button>
+            </td>
+          </tr>`;
+        });
+        
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+      }, err => {
+        container.innerHTML = `<p style="color:var(--danger);">เกิดข้อผิดพลาดในการโหลดแบบเรียลไทม์: ${err.message}</p>`;
+      });
+  }
+
+  async function quickUnlockStudent(sid, code) {
+    loading(true, "กำลังปลดล็อกสิทธิ์สอบ...");
+    try {
+      await db.collection("students").doc(sid).update({
+        finishedExams: firebase.firestore.FieldValue.arrayRemove(code),
+        activeExam: ""
+      });
+      loading(false);
+    } catch (e) {
+      loading(false);
+      alert("ปลดล็อกล้มเหลว: " + e.message);
+    }
+  }
+
+  function switchTeacherTab(tabName) {
+    if (unlockListener) {
+      unlockListener();
+      unlockListener = null;
+    }
+    
+    const btnSched = document.getElementById('tab-schedules-btn');
+    const btnUnlock = document.getElementById('tab-unlock-btn');
+    const btnPerson = document.getElementById('tab-personnel-btn');
+    
+    const secSched = document.getElementById('section-schedules');
+    const secUnlock = document.getElementById('section-unlock');
+    const secPerson = document.getElementById('section-personnel');
+    
+    btnSched.className = 'btn btn-out';
+    btnUnlock.className = 'btn btn-out';
+    btnPerson.className = 'btn btn-out';
+    
+    secSched.classList.add('hidden');
+    secUnlock.classList.add('hidden');
+    secPerson.classList.add('hidden');
+    
+    if (tabName === 'schedules') {
+      btnSched.className = 'btn btn-p';
+      secSched.classList.remove('hidden');
+      fetchTeacherData();
+    } else if (tabName === 'unlock') {
+      btnUnlock.className = 'btn btn-p';
+      secUnlock.classList.remove('hidden');
+      initRealtimeUnlockList();
+    } else if (tabName === 'personnel') {
+      btnPerson.className = 'btn btn-p';
+      secPerson.classList.remove('hidden');
+      switchPersonnelTab('teachers');
+    }
+  }
+
   // ==============================================
-  // ส่วนเริ่มข้อสอบและการจัดการความปลอดภัยการทุจริต (PROCTORING SYSTEMS)
+  // ส่วนเริ่มข้อสอบและการจัดการความปลอดภัยการทุจริต
   // ==============================================
 
   async function confirmOpenExam(examKey, code, name, duration) {
@@ -1199,7 +1653,6 @@
     
     loading(true, "กำลังเชื่อมต่อคลังข้อสอบกลางคลาวด์...");
     try {
-      // 1. ดึงข้อสอบและคำถามเฉพาะตัวโจทย์จาก Firebase
       const qDoc = await db.collection("questions").doc(examKey).get();
       if (!qDoc.exists) {
         loading(false);
@@ -1207,7 +1660,6 @@
       }
 
       const qData = qDoc.data();
-      // กรองคำตอบเฉลยเพื่อความปลอดภัยสูงสุดในการส่งมาแสดงหน้านักเรียน
       questionsData = qData.questions.map(q => {
         return {
           no: q.no,
@@ -1220,7 +1672,6 @@
       studentAnswers = new Array(questionsData.length).fill(0);
       activeQuestionIndex = 0;
 
-      // 2. ล็อกสถานะเริ่มสอบของนักเรียนเพื่อจำกัดการล็อกซ้อน
       await db.collection("students").doc(userData.sid).update({
         activeExam: code
       });
@@ -1229,7 +1680,6 @@
       enterFullscreen();
       startNativeExamUI(duration);
 
-      // บันทึก Log เริ่มต้นการเข้าทำสอบจริง
       logSecurityEvent("EXAM_START", `เริ่มเข้าสู่หน้าห้องสอบข้อสอบ คลัง: ${examKey}`);
     } catch(e) {
       loading(false);
@@ -1314,7 +1764,25 @@
     document.getElementById('prev-q-btn').disabled = (activeQuestionIndex === 0);
     document.getElementById('next-q-btn').disabled = (activeQuestionIndex === questionsData.length - 1);
     
+    // อัปเดตข้อมูล HUD ความก้าวหน้า
+    const totalQ = questionsData.length;
+    const answeredQ = studentAnswers.filter(ans => ans !== 0).length;
+    const unansweredQ = totalQ - answeredQ;
+    const pct = totalQ > 0 ? (answeredQ / totalQ) * 100 : 0;
+    
+    document.getElementById('hud-answered-count').innerText = answeredQ;
+    document.getElementById('hud-unanswered-count').innerText = unansweredQ;
+    document.getElementById('hud-total-count').innerText = totalQ;
+    document.getElementById('hud-progress-bar').style.width = `${pct}%`;
+
     renderQuestionGrid();
+    
+    // เรนเดอร์สมการคณิตศาสตร์
+    renderMathInElement(document.getElementById('exam-question-card'), {
+      delimiters: [
+        { left: "$", right: "$", display: false }
+      ]
+    });
   }
 
   function selectOption(choiceIdx) {
@@ -1346,20 +1814,18 @@
     }
   }
 
-  // ระบบส่งและคำนวณคะแนนฝั่ง Client อย่างปลอดภัย ณ จังหวะคลิกส่งกระดาษข้อสอบ
+  // ส่งและคำนวณคะแนนฝั่ง Client
   async function submitNativeExamAnswers(status) {
     clearInterval(examTimerInterval);
-    loading(true, "กำลังดึงข้อมูลตรวจและประมวลผลคะแนน...");
+    loading(true, "กำลังส่งกระดาษข้อสอบและตรวจคำตอบ...");
     
     try {
-      // 1. ดึงข้อมูลคลังข้อสอบสมบูรณ์ (ที่มีคีย์เฉลย correctAns) จาก Firestore
       const qDoc = await db.collection("questions").doc(currentExamKey).get();
       const rawQuestions = qDoc.data().questions;
       
       let totalScore = 0;
       let maxScore = 0;
       
-      // 2. ประมวลผลคิดคะแนน
       rawQuestions.forEach((row, index) => {
         const correctAns = parseInt(row.correctAns);
         const points = parseFloat(row.points) || 0.5;
@@ -1373,7 +1839,6 @@
 
       const timestamp = new Date().toLocaleString("th-TH", { timeZone: "Asia/Bangkok" });
 
-      // 3. บันทึกผลสอบส่งไปในคอลเลกชัน "exam_results"
       await db.collection("exam_results").add({
         timestamp: timestamp,
         studentId: userData.sid,
@@ -1388,10 +1853,8 @@
         details: status === "FORCE_LOCKED" ? "ถูกล็อกอัตโนมัติเนื่องจากการทุจริตสลับหน้าจอ" : "ส่งข้อสอบตามปกติ"
       });
 
-      // 4. บันทึกประวัติการทุจริตแบบสรุปผล
       logSecurityEvent(status, `ผลสอบคะแนนรวมที่ได้: ${totalScore}/${maxScore}`);
 
-      // 5. อัปเดตรายชื่อวิชาสอบเสร็จในแฟ้มบัญชีของนักเรียนคนนี้ เพื่อล็อกการทำซ้ำ
       await db.collection("students").doc(userData.sid).update({
         finishedExams: firebase.firestore.FieldValue.arrayUnion(currentExamCode),
         activeExam: ""
@@ -1432,7 +1895,7 @@
   }
 
   // ==============================================
-  // ส่วนตรวจสอบความปลอดภัยแบบเรียลไทม์ (ANTI-CHEAT HANDLERS)
+  // ระบบตรวจสอบความปลอดภัย
   // ==============================================
   
   function initKeyboardSecurity() {
@@ -1498,15 +1961,11 @@
     if (!isExamMode) return;
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
-      if (!isFullscreen) return;
-      triggerViolation("ย่อปรับขนาดหน้าต่างเว็บ (Browser Resized)");
-    }, 200);
+      triggerViolation("เปลี่ยนขนาดจอขณะทำสอบ (Window Resized)");
+    }, 500);
   }
 
-  // เรียกบันทึกเหตุการณ์ทุจริตลงไปในคอลเลกชัน "security_logs" ของ Firebase และอัปเดตหน้าบ้าน
-  async function logSecurityEvent(eventType, details) {
-    if (!userData) return;
+  async function logSecurityEvent(event, details) {
     const timestamp = new Date().toLocaleString("th-TH", { timeZone: "Asia/Bangkok" });
     try {
       await db.collection("security_logs").add({
@@ -1514,30 +1973,42 @@
         studentId: userData.sid,
         studentName: userData.name,
         level: userData.level,
+        room: userData.room,
+        no: userData.no,
         subjectCode: currentExamCode,
-        eventType: eventType,
+        event: event,
         details: details
       });
     } catch(err) {
-      console.log("Error logging security event: " + err.message);
+      console.log("Error saving log:", err);
     }
   }
 
   function triggerViolation(reason) {
-    if (!isExamMode) return;
+    if (isWarningDisplayed) return;
     violationCount++;
     
-    logSecurityEvent("VIOLATION", `ครั้งที่ ${violationCount}/${MAX_VIOLATIONS} เหตุผล: ${reason}`);
+    logSecurityEvent("RULE_VIOLATION", `ละเมิดกฎครั้งที่ ${violationCount}. สาเหตุ: ${reason}`);
 
-    if (violationCount >= MAX_VIOLATIONS) {
-      isWarningDisplayed = false;
-      document.getElementById('anti-cheat-modal').style.display = 'none';
-      alert(`🚨 ระบบระงับสิทธิ์การสอบของคุณทันทีเนื่องจากละเมิดระเบียบครบ ${MAX_VIOLATIONS} ครั้ง!\nระบบทำการส่งกระดาษข้อสอบและปิดห้องสอบโดยอัตโนมัติ`);
+    if (violationCount >= 2) {
+      isWarningDisplayed = true;
       submitNativeExamAnswers("FORCE_LOCKED");
     } else {
       isWarningDisplayed = true;
       document.getElementById('cheat-count-display').innerText = violationCount;
       document.getElementById('anti-cheat-modal').style.display = 'flex';
+      
+      // ปล่อยเสียงเตือนไซเรนแบบ CSS/JS
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1500, audioCtx.currentTime + 0.5);
+        osc.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.5);
+      } catch(e) {}
     }
   }
 
@@ -1547,39 +2018,220 @@
     enterFullscreen();
   }
 
-
   // ==============================================
-  // ส่วนการอัปโหลดไฟล์ WORD (.DOCX) และตรวจสอบ (TEACHER PANEL)
+  // Word .docx math parser (JSZip + CFB)
   // ==============================================
 
-  function handleWordFileUpload(event) {
+  function charToLatex(code) {
+    if (code === 960) return '\\pi';
+    if (code === 8712) return '\\in';
+    if (code === 177 || code === 0xb1) return '\\pm';
+    if (code === 8722 || code === 45 || code === 8721) return '-';
+    if (code === 43) return '+';
+    if (code === 46) return '.';
+    return String.fromCharCode(code);
+  }
+
+  function parseListToLatex(list) {
+    let latex = "";
+    let i = 0;
+    while (i < list.length) {
+      const node = list[i++];
+      if (node.type === 'END' || node.type === 'SIZE' || node.type === 'FONT') continue;
+      
+      if (node.type === 'CHAR') {
+        let charLatex = charToLatex(node.code);
+        if (node.embellishments && node.embellishments.length > 0) {
+          charLatex += parseListToLatex(node.embellishments);
+        }
+        latex += charLatex;
+      } else if (node.type === 'TMPL') {
+        if (node.selector === 13) { // radical
+          let slot1 = "";
+          while (i < list.length && list[i].type !== 'LINE') i++;
+          if (i < list.length && list[i].type === 'LINE') {
+            slot1 = parseListToLatex(list[i++].children);
+          }
+          let slot2 = "";
+          while (i < list.length && list[i].type !== 'LINE') i++;
+          if (i < list.length && list[i].type === 'LINE') {
+            slot2 = parseListToLatex(list[i++].children);
+          }
+          if (slot2) {
+            latex += `\\sqrt[${slot2}]{${slot1}}`;
+          } else {
+            latex += `\\sqrt{${slot1}}`;
+          }
+        } else if (node.selector === 14) { // fraction
+          let slot1 = "";
+          while (i < list.length && list[i].type !== 'LINE') i++;
+          if (i < list.length && list[i].type === 'LINE') {
+            slot1 = parseListToLatex(list[i++].children);
+          }
+          let slot2 = "";
+          while (i < list.length && list[i].type !== 'LINE') i++;
+          if (i < list.length && list[i].type === 'LINE') {
+            slot2 = parseListToLatex(list[i++].children);
+          }
+          latex += `\\frac{${slot1}}{${slot2}}`;
+        }
+      } else if (node.type === 'LINE') {
+        latex += parseListToLatex(node.children);
+      }
+    }
+    return latex;
+  }
+
+  async function parseMtefBinFromZip(zip, zipPath) {
+    try {
+      const fileData = await zip.file(zipPath).async("uint8array");
+      const cfb = CFB.read(fileData, { type: 'array' });
+      const entry = cfb.FileIndex.find(e => e.name === "Equation Native");
+      if (!entry) return "";
+      
+      const content = entry.content;
+      const cbObject = content[8] | (content[9] << 8) | (content[10] << 16) | (content[11] << 24);
+      const mtef = content.slice(28, 28 + cbObject);
+      
+      let pos = 0;
+      pos += 5; // skip header
+      
+      function parseList() {
+        const list = [];
+        while (pos < mtef.length) {
+          const tag = mtef[pos++];
+          if (tag === 0) {
+            list.push({ type: 'END' });
+            break;
+          }
+          
+          const type = tag & 0x0f;
+          if (type === 1) {
+            const children = parseList();
+            list.push({ type: 'LINE', children });
+          } else if (type === 2) {
+            const style = mtef[pos++];
+            let code;
+            if (style & 4) {
+              code = mtef[pos] | (mtef[pos+1] << 8);
+              pos += 2;
+            } else {
+              code = mtef[pos++];
+            }
+            const embellishments = parseList();
+            list.push({ type: 'CHAR', style, code, embellishments });
+          } else if (type === 3) {
+            const selector = mtef[pos++];
+            const opt = mtef[pos++];
+            const varByte = mtef[pos++];
+            list.push({ type: 'TMPL', selector, opt, varByte });
+          } else if (type === 8) {
+            const typefaceIndex = mtef[pos++];
+            const fontStyle = mtef[pos++];
+            while (pos < mtef.length && mtef[pos] !== 0) pos++;
+            pos++;
+            list.push({ type: 'FONT' });
+          } else if (type >= 10 && type <= 14) {
+            list.push({ type: 'SIZE', sizeType: type });
+          }
+        }
+        return list;
+      }
+      
+      const parsed = parseList();
+      return parseListToLatex(parsed);
+    } catch (err) {
+      console.error(`Error parsing MTEF in ${zipPath}:`, err);
+      return "";
+    }
+  }
+
+  async function parseDocxWithMath(arrayBuffer) {
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    
+    // 1. Read relationships
+    let relsMap = {};
+    try {
+      const relsXml = await zip.file("word/_rels/document.xml.rels").async("text");
+      const relRegex = /<Relationship\b([^>]*?)\/>/g;
+      let match;
+      while ((match = relRegex.exec(relsXml)) !== null) {
+        const attrs = match[1];
+        const idMatch = attrs.match(/Id="([^"]+)"/);
+        const targetMatch = attrs.match(/Target="([^"]+)"/);
+        if (idMatch && targetMatch) {
+          relsMap[idMatch[1]] = targetMatch[1];
+        }
+      }
+    } catch (err) {
+      console.error("No relationships file found", err);
+    }
+    
+    // 2. Read document.xml
+    const xml = await zip.file("word/document.xml").async("text");
+    const pMatches = xml.match(/<w:p\b[^>]*>([\s\S]*?)<\/w:p>/g);
+    if (!pMatches) {
+      throw new Error("ไม่พบย่อหน้าข้อความในเอกสาร Word");
+    }
+    
+    const paragraphs = [];
+    
+    for (let i = 0; i < pMatches.length; i++) {
+      const pXml = pMatches[i];
+      let pText = "";
+      
+      const tagRegex = /<(w:t|m:t|w:object)\b[^>]*>([\s\S]*?)<\/\1>/g;
+      let tMatch;
+      while ((tMatch = tagRegex.exec(pXml)) !== null) {
+        const tagName = tMatch[1];
+        const innerContent = tMatch[2];
+        
+        if (tagName === 'w:t' || tagName === 'm:t') {
+          pText += innerContent.replace(/<[^>]+>/g, '');
+        } else if (tagName === 'w:object') {
+          const oleMatch = innerContent.match(/<o:OLEObject\b[^>]*\br:id="([^"]+)"/) || innerContent.match(/<o:OLEObject\b[^>]*\bid="([^"]+)"/);
+          if (oleMatch) {
+            const rId = oleMatch[1];
+            const targetFile = relsMap[rId];
+            if (targetFile) {
+              const zipPath = targetFile.startsWith("embeddings/") ? "word/" + targetFile : targetFile;
+              if (zip.file(zipPath)) {
+                const formula = await parseMtefBinFromZip(zip, zipPath);
+                if (formula) {
+                  pText += ` $${formula}$ `;
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      const trimmed = pText.trim();
+      if (trimmed.length > 0) {
+        paragraphs.push(trimmed);
+      }
+    }
+    
+    return paragraphs;
+  }
+
+  async function handleWordFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    loading(true, "กำลังเปิดและอ่านโครงสร้างไฟล์ Word...");
-
-    reader.onload = function(loadEvent) {
-      const arrayBuffer = loadEvent.target.result;
-      
-      mammoth.extractRawText({ arrayBuffer: arrayBuffer })
-        .then(function(result) {
-          const rawText = result.value;
-          parseDocxExamText(rawText);
-        })
-        .catch(function(err) {
-          loading(false);
-          alert("ไม่สามารถอ่านไฟล์ Word ได้: " + err.message);
-        });
-    };
-    
-    reader.readAsArrayBuffer(file);
+    loading(true, "กำลังวิเคราะห์สูตรคณิตศาสตร์และตัวเลือกในไฟล์ Word...");
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const paragraphs = await parseDocxWithMath(arrayBuffer);
+      parseDocxExamParagraphs(paragraphs);
+    } catch (err) {
+      loading(false);
+      alert("ไม่สามารถวิเคราะห์ไฟล์ Word ได้: " + err.message);
+    }
   }
 
-  function parseDocxExamText(text) {
+  function parseDocxExamParagraphs(paragraphTexts) {
     loading(false);
-    
-    const paragraphTexts = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     
     const rawQuestions = [];
     let currentQ = null;
@@ -1748,7 +2400,7 @@
   function addQuestionToPreview() {
     parsedQuestions.push({
       no: parsedQuestions.length + 1,
-      question: "คำถามข้อสอบใหม่...",
+      question: "คำถามใหม่...",
       choices: ["", "", "", ""],
       correctAns: 1,
       points: 0.5
@@ -1762,7 +2414,43 @@
     renderImportPreview();
   }
 
-  // ส่งบันทึกข้อสอบที่แกะได้ขึ้นคลังคำถาม Firebase Firestore Direct
+  function toggleMathPreview() {
+    const box = document.getElementById('import-math-preview-box');
+    const contentEl = document.getElementById('import-math-preview-content');
+    if (!box || !contentEl) return;
+    
+    if (box.style.display === 'none') {
+      let html = "";
+      parsedQuestions.forEach((q, idx) => {
+        const qText = document.getElementById(`import-q-${idx}`).value;
+        const c1 = document.getElementById(`import-c1-${idx}`).value;
+        const c2 = document.getElementById(`import-c2-${idx}`).value;
+        const c3 = document.getElementById(`import-c3-${idx}`).value;
+        const c4 = document.getElementById(`import-c4-${idx}`).value;
+        
+        html += `<div style="border-bottom:1px solid #f1f3f4; padding:10px 0;">
+          <b>ข้อที่ ${idx + 1}. ${qText}</b>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-left:15px; margin-top:5px; color:var(--text-secondary);">
+            <div>ก. ${c1}</div>
+            <div>ข. ${c2}</div>
+            <div>ค. ${c3}</div>
+            <div>ง. ${c4}</div>
+          </div>
+        </div>`;
+      });
+      contentEl.innerHTML = html;
+      
+      renderMathInElement(contentEl, {
+        delimiters: [
+          { left: "$", right: "$", display: false }
+        ]
+      });
+      box.style.display = 'block';
+    } else {
+      box.style.display = 'none';
+    }
+  }
+
   async function saveImportedQuestions() {
     const code = document.getElementById('import-subject-code').value.trim();
     if (!code) return alert("กรุณากรอกรหัสวิชาก่อนบันทึก เพื่อระบุเอกสารข้อสอบ");
@@ -1791,7 +2479,7 @@
 
     if (finalData.length === 0) return alert("ไม่พบข้อมูลข้อสอบที่จะบันทึก");
 
-    const docKey = "Q_" + code.replace(/[^a-zA-Z0-9_]/g, "");
+    const docKey = targetImportExamKey || ("Q_" + code.replace(/[^a-zA-Z0-9_]/g, ""));
     loading(true, "กำลังส่งขึ้นคลัง Firebase Firestore...");
     try {
       await db.collection("questions").doc(docKey).set({
@@ -1805,6 +2493,7 @@
       document.getElementById('import-subject-code').value = "";
       document.getElementById('docx-file-input').value = "";
       document.getElementById('import-preview-section').classList.add('hidden');
+      document.getElementById('import-math-preview-box').style.display = 'none';
       parsedQuestions = [];
       
       fetchTeacherData();
@@ -1815,7 +2504,209 @@
   }
 
   // ==============================================
-  // ระบบจัดการบัญชีผู้ใช้ครูและนักเรียน (PERSONNEL MANAGEMENT)
+  // Excel student roster parser
+  // ==============================================
+
+  function handleExcelFileUpload(event) {
+    let file;
+    if (event.dataTransfer) {
+      file = event.dataTransfer.files[0];
+    } else if (event.target) {
+      file = event.target.files[0];
+    }
+    if (!file) return;
+    
+    loading(true, "กำลังเปิดและอ่านโครงสร้างไฟล์ Excel...");
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        const allStudents = [];
+        
+        workbook.SheetNames.forEach(sheetName => {
+          const sheet = workbook.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          
+          const roomMatch = sheetName.match(/^(\d+)-(\d+)\s*\(ID\)$/) || sheetName.match(/^(ม\.)?(\d+)-(\d+)\s*\(ID\)$/);
+          let defaultLevel = "";
+          let defaultRoom = "";
+          if (roomMatch) {
+            defaultLevel = "ม." + (roomMatch[2] || roomMatch[1]);
+            defaultRoom = roomMatch[3] || roomMatch[2];
+          }
+          
+          let currentLevel = defaultLevel;
+          let currentRoom = defaultRoom;
+          let currentBlockStudents = [];
+          
+          for (let rIdx = 0; rIdx < rows.length; rIdx++) {
+            const row = rows[rIdx];
+            if (!row || row.length === 0) continue;
+            
+            const rowStr = row.map(val => String(val || '')).join(" ");
+            
+            // 1. ตรวจสอบแถวสรุปจำนวนคนท้ายห้อง (ห้องที่ 1 รวม 33 คน)
+            const footerMatch = rowStr.match(/ห้อง(?:ที่)?\s*(\d+)\s*รวม/) || (rowStr.match(/ห้อง(?:ที่)?\s*(\d+)/) && rowStr.includes("รวม"));
+            if (footerMatch) {
+              const roomNum = footerMatch[1];
+              
+              currentBlockStudents.forEach(std => {
+                std.room = roomNum;
+              });
+              
+              allStudents.push(...currentBlockStudents);
+              currentBlockStudents = [];
+              
+              currentRoom = String(parseInt(roomNum) + 1);
+              continue;
+            }
+            
+            // 2. ตรวจสอบแถวหัวห้อง (เช่น ม.2/1 หรือ ม.2 ห้อง 1)
+            const classBoundaryMatch = 
+              rowStr.match(/ชั้น\s*ม\.?\s*(\d+)\s*ห้องที่\s*(\d+)/) ||
+              rowStr.match(/ชั้นมัธยมศึกษาปีที่\s*(\d+)\/(\d+)/) ||
+              rowStr.match(/ชั้น\s*ม\.?\s*(\d+)\s*ห้อง\s*(\d+)/) ||
+              rowStr.match(/ม\.?\s*(\d+)\/(\d+)/);
+              
+            if (classBoundaryMatch) {
+              currentLevel = "ม." + classBoundaryMatch[1];
+              currentRoom = classBoundaryMatch[2];
+              
+              if (currentBlockStudents.length > 0) {
+                allStudents.push(...currentBlockStudents);
+                currentBlockStudents = [];
+              }
+              continue;
+            }
+            
+            // 3. วิเคราะห์คอลัมน์หาค่าต่าง ๆ
+            let sidVal = "";
+            let cidVal = "";
+            let nameVal = "";
+            let noVal = "";
+            
+            row.forEach((cell, cIdx) => {
+              if (cell === null || cell === undefined) return;
+              const str = String(cell).trim();
+              if (str.length === 0) return;
+              
+              if (/^\d{5}$/.test(str)) {
+                sidVal = str;
+              } else if (/^\d{13}$/.test(str)) {
+                cidVal = str;
+              } else if (/^\d+$/.test(str) && parseInt(str) < 100 && cIdx <= 2) {
+                noVal = str;
+              } else if (typeof cell === 'string' && str.length > 2) {
+                const isHeader = /เลขที่|ประจำตัว|บัตร|ประชาชน|ชื่อ|นามสกุล|ที่ปรึกษา|ครู|รวม|โรงเรียน/g.test(str);
+                if (!isHeader && !nameVal) {
+                  const prefixes = ["เด็กชาย", "เด็กหญิง", "นาย", "นางสาว", "นาง", "ด.ช.", "ด.ญ."];
+                  if (prefixes.includes(str)) {
+                    const col4 = row[cIdx+1] ? String(row[cIdx+1]).trim() : "";
+                    const col5 = row[cIdx+2] ? String(row[cIdx+2]).trim() : "";
+                    nameVal = str + col4 + " " + col5;
+                  } else {
+                    nameVal = str;
+                  }
+                }
+              }
+            });
+            
+            if (sidVal && nameVal) {
+              currentBlockStudents.push({
+                no: noVal || String(currentBlockStudents.length + 1),
+                sid: sidVal,
+                cid: cidVal,
+                name: nameVal,
+                level: currentLevel || "ม.1",
+                room: currentRoom || "1"
+              });
+            }
+          }
+          
+          if (currentBlockStudents.length > 0) {
+            allStudents.push(...currentBlockStudents);
+            currentBlockStudents = [];
+          }
+        });
+        
+        loading(false);
+        if (allStudents.length === 0) {
+          alert("ไม่พบข้อมูลรายชื่อนักเรียนในไฟล์ Excel นี้ กรุณาตรวจสอบรูปแบบตาราง");
+          return;
+        }
+        
+        parsedStudents = allStudents;
+        
+        document.getElementById('excel-student-count').innerText = parsedStudents.length;
+        
+        const tbody = document.getElementById('excel-preview-body');
+        let html = "";
+        parsedStudents.forEach(s => {
+          const password = s.cid || s.sid;
+          html += `<tr>
+            <td>${s.level}</td>
+            <td>ห้อง ${s.room}</td>
+            <td>${s.no}</td>
+            <td><b>${s.sid}</b></td>
+            <td><code>${password}</code></td>
+            <td>${s.name}</td>
+          </tr>`;
+        });
+        tbody.innerHTML = html;
+        document.getElementById('excel-preview-section').classList.remove('hidden');
+      } catch(err) {
+        loading(false);
+        alert("วิเคราะห์ Excel ผิดพลาด: " + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  async function saveImportedStudents() {
+    if (!parsedStudents || parsedStudents.length === 0) return alert("ไม่มีข้อมูลรายชื่อนักเรียนจะบันทึก");
+    
+    loading(true, `กำลังบันทึกรายชื่อนักเรียน ${parsedStudents.length} คน ลงฐานข้อมูลคลาวด์ Firebase...`);
+    
+    try {
+      const chunkSize = 500;
+      for (let i = 0; i < parsedStudents.length; i += chunkSize) {
+        const chunk = parsedStudents.slice(i, i + chunkSize);
+        const batch = db.batch();
+        
+        chunk.forEach(s => {
+          const studentRef = db.collection("students").doc(s.sid);
+          const password = s.cid || s.sid;
+          batch.set(studentRef, {
+            name: s.name,
+            password: password,
+            level: s.level,
+            room: s.room,
+            no: s.no,
+            finishedExams: [],
+            activeExam: ""
+          });
+        });
+        
+        await batch.commit();
+      }
+      
+      loading(false);
+      alert(`🎉 นำเข้ารายชื่อนักเรียนสำเร็จทั้งหมด ${parsedStudents.length} คนเรียบร้อยแล้ว!`);
+      document.getElementById('excel-preview-section').classList.add('hidden');
+      parsedStudents = [];
+      document.getElementById('excel-file-input').value = "";
+      
+      fetchStudentsList();
+    } catch (err) {
+      loading(false);
+      alert("เกิดข้อผิดพลาดในการบันทึกรายชื่อ: " + err.message);
+    }
+  }
+
+  // ==============================================
+  // ระบบจัดการบัญชีผู้ใช้งานครูและนักเรียนดั้งเดิม
   // ==============================================
 
   async function ensureDefaultAdmin() {
@@ -1823,7 +2714,7 @@
       const adminDoc = await db.collection("users_teachers").doc("admin").get();
       if (!adminDoc.exists) {
         await db.collection("users_teachers").doc("admin").set({
-          name: "ผู้ดูแลระบบหลัก (Default Admin)",
+          name: "ผู้ดูแลระบบหลัก (Admin)",
           password: "admin",
           isAdmin: true
         });
@@ -1878,7 +2769,6 @@
         const username = doc.id;
         const roleText = data.isAdmin ? '<span class="role-badge" style="margin:0;">Admin</span>' : '<span style="color:var(--text-secondary);">ครูผู้สอน</span>';
         
-        // บล็อกปุ่มลบหากเป็น username 'admin' (ป้องกันระบบเสียหาย)
         let deleteBtn = `<button class="btn btn-danger" style="padding:6px 12px; font-size:0.85em;" onclick="deleteTeacher('${username}')"><i class="fa fa-trash-alt"></i> ลบ</button>`;
         if (username === 'admin') {
           deleteBtn = `<span style="font-size:0.85em; color:var(--text-secondary);">ระบบหลัก (ลบไม่ได้)</span>`;
@@ -1928,7 +2818,6 @@
       loading(false);
       alert("เพิ่มบัญชีครูเรียบร้อย");
       
-      // เคลียร์ค่า input
       document.getElementById('new-t-user').value = "";
       document.getElementById('new-t-name').value = "";
       document.getElementById('new-t-pass').value = "";
@@ -2050,14 +2939,12 @@
       loading(false);
       alert("เพิ่มบัญชีนักเรียนเรียบร้อย");
 
-      // เคลียร์ค่า input
       document.getElementById('new-s-user').value = "";
       document.getElementById('new-s-name').value = "";
       document.getElementById('new-s-pass').value = "";
       document.getElementById('new-s-room').value = "";
       document.getElementById('new-s-no').value = "";
 
-      // ตั้งค่าตัวเลือกแสดงผลให้ตรงกันแล้วดึงข้อมูลใหม่
       document.getElementById('m-s-level').value = lvVal;
       fetchStudentsList();
     } catch (e) {
@@ -2098,6 +2985,7 @@
       alert("ล้างประวัติล้มเหลว: " + e.message);
     }
   }
+
 </script>
 </body>
 </html>
