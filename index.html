@@ -708,6 +708,70 @@
         <button class="btn btn-success" onclick="doUnlock()"><i class="fa fa-key"></i> ปลดล็อกข้อสอบ</button>
       </div>
     </div>
+
+    <!-- ==============================================
+         ระบบจัดการบุคลากร (ครูและนักเรียน) - Admin Only
+         ============================================== -->
+    <div id="personnel-management-area" class="card hidden" style="margin-top: 30px; border: 1.5px solid var(--border); padding: 25px; border-radius: 16px;">
+      <h3 style="margin-top:0; color: var(--primary);"><i class="fa fa-users-gear"></i> ระบบจัดการบุคลากร (ครู / นักเรียน)</h3>
+      <p style="font-size: 0.9em; color: var(--text-secondary);">จัดการบัญชีผู้ใช้งานครูผู้สอนและนักเรียนภายในโรงเรียน</p>
+      
+      <!-- เมนูสลับแท็บจัดการ -->
+      <div style="display:flex; gap:10px; margin-bottom: 20px;">
+        <button class="btn btn-p" id="tab-manage-teachers-btn" onclick="switchPersonnelTab('teachers')"><i class="fa fa-chalkboard-user"></i> จัดการครูผู้สอน</button>
+        <button class="btn btn-out" id="tab-manage-students-btn" onclick="switchPersonnelTab('students')"><i class="fa fa-users"></i> จัดการนักเรียน</button>
+      </div>
+
+      <!-- ส่วนจัดการคณะครู -->
+      <div id="subtab-teachers">
+        <h4 style="margin-top:0; color: var(--primary);">เพิ่มบัญชีครูใหม่</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1.5fr 1fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 20px;">
+          <div><small style="font-weight:600;">Username</small><input type="text" id="new-t-user" class="input-flat" style="margin:0;" placeholder="เช่น somchai"></div>
+          <div><small style="font-weight:600;">ชื่อ-นามสกุล</small><input type="text" id="new-t-name" class="input-flat" style="margin:0;" placeholder="เช่น ครูสมชาย ใจดี"></div>
+          <div><small style="font-weight:600;">รหัสผ่าน</small><input type="password" id="new-t-pass" class="input-flat" style="margin:0;" placeholder="รหัสผ่าน"></div>
+          <div>
+            <small style="font-weight:600;">บทบาท</small>
+            <select id="new-t-role" class="input-flat" style="margin:0;">
+              <option value="teacher">ครูผู้สอน</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <button class="btn btn-success" style="padding:12px 18px;" onclick="addTeacher()"><i class="fa fa-plus"></i> เพิ่ม</button>
+        </div>
+        
+        <h4 style="color:var(--text-secondary);">รายชื่อบุคลากรครูทั้งหมด</h4>
+        <div id="teachers-table-area" style="overflow-x:auto;"></div>
+      </div>
+
+      <!-- ส่วนจัดการนักเรียน -->
+      <div id="subtab-students" class="hidden">
+        <h4 style="margin-top:0; color: var(--primary);">เพิ่มบัญชีนักเรียนใหม่</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1.5fr 1fr 0.8fr 0.8fr 0.8fr auto; gap: 10px; align-items: end; margin-bottom: 20px;">
+          <div><small style="font-weight:600;">รหัสนักเรียน</small><input type="text" id="new-s-user" class="input-flat" style="margin:0;" placeholder="651001"></div>
+          <div><small style="font-weight:600;">ชื่อ-นามสกุล</small><input type="text" id="new-s-name" class="input-flat" style="margin:0;" placeholder="เด็กชายสมบูรณ์ ดี"></div>
+          <div><small style="font-weight:600;">รหัสผ่าน</small><input type="text" id="new-s-pass" class="input-flat" style="margin:0;" placeholder="รหัสผ่าน"></div>
+          <div>
+            <small style="font-weight:600;">ระดับชั้น</small>
+            <select id="new-s-level" class="input-flat" style="margin:0;">
+              <option>ม.1</option><option>ม.2</option><option>ม.3</option><option>ม.4</option><option>ม.5</option><option>ม.6</option>
+            </select>
+          </div>
+          <div><small style="font-weight:600;">ห้อง</small><input type="text" id="new-s-room" class="input-flat" style="margin:0;" placeholder="1"></div>
+          <div><small style="font-weight:600;">เลขที่</small><input type="text" id="new-s-no" class="input-flat" style="margin:0;" placeholder="1"></div>
+          <button class="btn btn-success" style="padding:12px 18px;" onclick="addStudent()"><i class="fa fa-plus"></i> เพิ่ม</button>
+        </div>
+        
+        <h4 style="color:var(--text-secondary);">รายชื่อบัญชีนักเรียนแยกตามระดับชั้น</h4>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
+          <small style="font-weight:600;">เลือกระดับชั้น:</small>
+          <select id="m-s-level" class="input-flat" style="width:150px; margin:0;" onchange="fetchStudentsList()">
+            <option value="">-- เลือกระดับชั้น --</option>
+            <option>ม.1</option><option>ม.2</option><option>ม.3</option><option>ม.4</option><option>ม.5</option><option>ม.6</option>
+          </select>
+        </div>
+        <div id="students-table-area" style="overflow-x:auto;"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -730,6 +794,7 @@
   try {
     firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
+    ensureDefaultAdmin();
   } catch (err) {
     alert("❌ ไม่สามารถเชื่อมต่อ Firebase ได้! โปรดกรอกข้อมูลตั้งค่าเชื่อมต่อที่ส่วนบนของไฟล์ index.html สคริปต์บรรทัดที่ 700");
   }
@@ -799,7 +864,14 @@
           document.getElementById('teacher-page').classList.remove('hidden');
           document.getElementById('t-name').innerText = userData.name;
           document.getElementById('t-role').innerText = userData.displayRole;
-          if(userData.isAdmin) document.getElementById('admin-area').classList.remove('hidden');
+          if(userData.isAdmin) {
+            document.getElementById('admin-area').classList.remove('hidden');
+            document.getElementById('personnel-management-area').classList.remove('hidden');
+            fetchTeachersList();
+          } else {
+            document.getElementById('admin-area').classList.add('hidden');
+            document.getElementById('personnel-management-area').classList.add('hidden');
+          }
           return;
         }
       }
@@ -1739,6 +1811,291 @@
     } catch (e) {
       loading(false);
       alert("บันทึกล้มเหลว: " + e.message);
+    }
+  }
+
+  // ==============================================
+  // ระบบจัดการบัญชีผู้ใช้ครูและนักเรียน (PERSONNEL MANAGEMENT)
+  // ==============================================
+
+  async function ensureDefaultAdmin() {
+    try {
+      const adminDoc = await db.collection("users_teachers").doc("admin").get();
+      if (!adminDoc.exists) {
+        await db.collection("users_teachers").doc("admin").set({
+          name: "ผู้ดูแลระบบหลัก (Default Admin)",
+          password: "admin",
+          isAdmin: true
+        });
+        console.log("สร้างบัญชีผู้ดูแลระบบหลักเรียบร้อย (admin / admin)");
+      }
+    } catch (e) {
+      console.error("เกิดข้อผิดพลาดในการตรวจสอบบัญชีแอดมินเริ่มต้น: ", e);
+    }
+  }
+
+  function switchPersonnelTab(tab) {
+    const btnTeachers = document.getElementById('tab-manage-teachers-btn');
+    const btnStudents = document.getElementById('tab-manage-students-btn');
+    const tabTeachers = document.getElementById('subtab-teachers');
+    const tabStudents = document.getElementById('subtab-students');
+
+    if (tab === 'teachers') {
+      btnTeachers.className = 'btn btn-p';
+      btnStudents.className = 'btn btn-out';
+      tabTeachers.classList.remove('hidden');
+      tabStudents.classList.add('hidden');
+      fetchTeachersList();
+    } else {
+      btnTeachers.className = 'btn btn-out';
+      btnStudents.className = 'btn btn-p';
+      tabTeachers.classList.add('hidden');
+      tabStudents.classList.remove('hidden');
+      fetchStudentsList();
+    }
+  }
+
+  async function fetchTeachersList() {
+    const area = document.getElementById('teachers-table-area');
+    if (!area) return;
+    area.innerHTML = "<p style='color: var(--text-secondary);'><i class='fa fa-spinner fa-spin'></i> กำลังโหลดรายชื่อครู...</p>";
+    try {
+      const snapshot = await db.collection("users_teachers").get();
+      let html = `<table>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>ชื่อ-นามสกุล</th>
+            <th>รหัสผ่าน</th>
+            <th>บทบาท</th>
+            <th style="text-align:center; width:100px;">การจัดการ</th>
+          </tr>
+        </thead>
+        <tbody>`;
+      
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const username = doc.id;
+        const roleText = data.isAdmin ? '<span class="role-badge" style="margin:0;">Admin</span>' : '<span style="color:var(--text-secondary);">ครูผู้สอน</span>';
+        
+        // บล็อกปุ่มลบหากเป็น username 'admin' (ป้องกันระบบเสียหาย)
+        let deleteBtn = `<button class="btn btn-danger" style="padding:6px 12px; font-size:0.85em;" onclick="deleteTeacher('${username}')"><i class="fa fa-trash-alt"></i> ลบ</button>`;
+        if (username === 'admin') {
+          deleteBtn = `<span style="font-size:0.85em; color:var(--text-secondary);">ระบบหลัก (ลบไม่ได้)</span>`;
+        }
+
+        html += `<tr>
+          <td><b>${username}</b></td>
+          <td>${data.name}</td>
+          <td><code>${data.password}</code></td>
+          <td>${roleText}</td>
+          <td style="text-align:center;">${deleteBtn}</td>
+        </tr>`;
+      });
+      
+      html += `</tbody></table>`;
+      area.innerHTML = html;
+    } catch (e) {
+      area.innerHTML = `<p style="color:var(--danger);"><i class="fa fa-exclamation-triangle"></i> โหลดข้อมูลล้มเหลว: ${e.message}</p>`;
+    }
+  }
+
+  async function addTeacher() {
+    const userVal = document.getElementById('new-t-user').value.trim();
+    const nameVal = document.getElementById('new-t-name').value.trim();
+    const passVal = document.getElementById('new-t-pass').value.trim();
+    const roleVal = document.getElementById('new-t-role').value;
+
+    if (!userVal || !nameVal || !passVal) {
+      return alert("กรุณากรอกข้อมูลครูใหม่ให้ครบถ้วน");
+    }
+
+    loading(true, "กำลังบันทึกบัญชีครูผู้สอน...");
+    try {
+      const docRef = db.collection("users_teachers").doc(userVal);
+      const docSnap = await docRef.get();
+      if (docSnap.exists) {
+        loading(false);
+        return alert("ชื่อผู้ใช้งาน (Username) นี้มีอยู่ในระบบแล้ว");
+      }
+
+      await docRef.set({
+        name: nameVal,
+        password: passVal,
+        isAdmin: (roleVal === 'admin')
+      });
+
+      loading(false);
+      alert("เพิ่มบัญชีครูเรียบร้อย");
+      
+      // เคลียร์ค่า input
+      document.getElementById('new-t-user').value = "";
+      document.getElementById('new-t-name').value = "";
+      document.getElementById('new-t-pass').value = "";
+
+      fetchTeachersList();
+    } catch (e) {
+      loading(false);
+      alert("เพิ่มบัญชีครูส้มเหลว: " + e.message);
+    }
+  }
+
+  async function deleteTeacher(username) {
+    if (username === 'admin') return alert("ไม่สามารถลบผู้ดูแลระบบหลักได้");
+    if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบบัญชีครูผู้สอน [${username}] ออกจากระบบ?`)) return;
+
+    loading(true, "กำลังลบบัญชี...");
+    try {
+      await db.collection("users_teachers").doc(username).delete();
+      loading(false);
+      alert("ลบบัญชีครูผู้สอนสำเร็จ");
+      fetchTeachersList();
+    } catch (e) {
+      loading(false);
+      alert("ลบล้มเหลว: " + e.message);
+    }
+  }
+
+  async function fetchStudentsList() {
+    const lv = document.getElementById('m-s-level').value;
+    const area = document.getElementById('students-table-area');
+    if (!area) return;
+    
+    if (!lv) {
+      area.innerHTML = "<p style='color: var(--text-secondary); text-align:center; padding: 20px;'><i class='fa fa-info-circle'></i> กรุณาเลือกระดับชั้นเรียนเพื่อดูรายชื่อนักเรียน</p>";
+      return;
+    }
+
+    area.innerHTML = "<p style='color: var(--text-secondary);'><i class='fa fa-spinner fa-spin'></i> กำลังโหลดรายชื่อนักเรียน...</p>";
+    try {
+      const snapshot = await db.collection("students").where("level", "==", lv).get();
+      
+      if (snapshot.empty) {
+        area.innerHTML = "<p style='color: var(--text-secondary); text-align:center; padding: 20px;'><i class='fa fa-info-circle'></i> ไม่พบรายชื่อนักเรียนในระดับชั้นนี้</p>";
+        return;
+      }
+
+      let html = `<table>
+        <thead>
+          <tr>
+            <th>รหัสนักเรียน</th>
+            <th>ชื่อ-นามสกุล</th>
+            <th>ระดับชั้น / ห้อง / เลขที่</th>
+            <th>รหัสผ่าน</th>
+            <th>วิชาที่สอบเสร็จแล้ว</th>
+            <th style="text-align:center; width:220px;">การจัดการ</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const sid = doc.id;
+        const finished = data.finishedExams || [];
+        const finishedText = finished.length > 0 ? 
+          finished.map(code => `<span style="font-size:0.8em; background:#e8f0fe; color:var(--primary); padding:2px 6px; border-radius:4px; margin-right:4px;">${code}</span>`).join('') :
+          '<span style="color:var(--text-secondary); font-size:0.9em;">ยังไม่มีประวัติ</span>';
+
+        html += `<tr>
+          <td><b>${sid}</b></td>
+          <td>${data.name}</td>
+          <td>ม.${data.level.replace("ม.", "")} ห้อง ${data.room} เลขที่ ${data.no}</td>
+          <td><code>${data.password}</code></td>
+          <td>${finishedText}</td>
+          <td style="text-align:center; display:flex; gap:6px; justify-content:center;">
+            <button class="btn btn-out" style="padding:6px 12px; font-size:0.85em; border-color:var(--warning); color:var(--warning);" title="ล้างประวัติสอบ" onclick="resetStudentExams('${sid}')"><i class="fa fa-rotate-left"></i> ล้างประวัติสอบ</button>
+            <button class="btn btn-danger" style="padding:6px 12px; font-size:0.85em;" title="ลบนักเรียน" onclick="deleteStudent('${sid}')"><i class="fa fa-trash-alt"></i> ลบ</button>
+          </td>
+        </tr>`;
+      });
+
+      html += `</tbody></table>`;
+      area.innerHTML = html;
+    } catch (e) {
+      area.innerHTML = `<p style="color:var(--danger);"><i class="fa fa-exclamation-triangle"></i> โหลดข้อมูลล้มเหลว: ${e.message}</p>`;
+    }
+  }
+
+  async function addStudent() {
+    const userVal = document.getElementById('new-s-user').value.trim();
+    const nameVal = document.getElementById('new-s-name').value.trim();
+    const passVal = document.getElementById('new-s-pass').value.trim();
+    const lvVal = document.getElementById('new-s-level').value;
+    const roomVal = document.getElementById('new-s-room').value.trim();
+    const noVal = document.getElementById('new-s-no').value.trim();
+
+    if (!userVal || !nameVal || !passVal || !roomVal || !noVal) {
+      return alert("กรุณากรอกข้อมูลนักเรียนใหม่ให้ครบถ้วน");
+    }
+
+    loading(true, "กำลังบันทึกบัญชีนักเรียน...");
+    try {
+      const docRef = db.collection("students").doc(userVal);
+      const docSnap = await docRef.get();
+      if (docSnap.exists) {
+        loading(false);
+        return alert("รหัสนักเรียนนี้มีอยู่ในระบบแล้ว");
+      }
+
+      await docRef.set({
+        name: nameVal,
+        password: passVal,
+        level: lvVal,
+        room: roomVal,
+        no: noVal,
+        finishedExams: [],
+        activeExam: ""
+      });
+
+      loading(false);
+      alert("เพิ่มบัญชีนักเรียนเรียบร้อย");
+
+      // เคลียร์ค่า input
+      document.getElementById('new-s-user').value = "";
+      document.getElementById('new-s-name').value = "";
+      document.getElementById('new-s-pass').value = "";
+      document.getElementById('new-s-room').value = "";
+      document.getElementById('new-s-no').value = "";
+
+      // ตั้งค่าตัวเลือกแสดงผลให้ตรงกันแล้วดึงข้อมูลใหม่
+      document.getElementById('m-s-level').value = lvVal;
+      fetchStudentsList();
+    } catch (e) {
+      loading(false);
+      alert("เพิ่มบัญชีนักเรียนล้มเหลว: " + e.message);
+    }
+  }
+
+  async function deleteStudent(id) {
+    if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบบัญชีนักเรียน [${id}] ออกจากระบบ?`)) return;
+
+    loading(true, "กำลังลบบัญชี...");
+    try {
+      await db.collection("students").doc(id).delete();
+      loading(false);
+      alert("ลบบัญชีนักเรียนสำเร็จ");
+      fetchStudentsList();
+    } catch (e) {
+      loading(false);
+      alert("ลบล้มเหลว: " + e.message);
+    }
+  }
+
+  async function resetStudentExams(id) {
+    if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการล้างประวัติการทำข้อสอบทั้งหมดของนักเรียน [${id}] เพื่อให้เริ่มทำสอบวิชาต่างๆ ใหม่ได้?`)) return;
+
+    loading(true, "กำลังล้างประวัติการสอบ...");
+    try {
+      await db.collection("students").doc(id).update({
+        finishedExams: [],
+        activeExam: ""
+      });
+      loading(false);
+      alert("ล้างประวัติการสอบของนักเรียนเรียบร้อยแล้ว");
+      fetchStudentsList();
+    } catch (e) {
+      loading(false);
+      alert("ล้างประวัติล้มเหลว: " + e.message);
     }
   }
 </script>
